@@ -1,0 +1,1988 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Harness & Claude Code 实践解析 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ========== CSS Variables ========== */
+:root {
+  --anthro-coral: #D97757;
+  --anthro-coral-light: #E8956F;
+  --anthro-coral-dark: #C15A3A;
+  --anthro-charcoal: #1C1917;
+  --anthro-dark: #292524;
+  --anthro-warm-gray: #44403C;
+  --anthro-mid-gray: #78716C;
+  --anthro-light-gray: #D6D3D1;
+  --anthro-cream: #FAFAF9;
+  --anthro-warm-white: #F5F5F4;
+  --anthro-sand: #E7E5E4;
+  --code-bg: #1C1917;
+  --code-green: #86EFAC;
+  --code-blue: #93C5FD;
+  --code-yellow: #FDE68A;
+  --code-purple: #C4B5FD;
+  --code-orange: #FDBA74;
+  --code-comment: #78716C;
+  --slide-max-w: 1120px;
+  --font-display: 'Noto Serif SC', 'Georgia', serif;
+  --font-body: 'Noto Sans SC', 'Helvetica Neue', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Menlo', monospace;
+}
+
+/* ========== Reset & Base ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--anthro-cream);
+  color: var(--anthro-charcoal);
+  overflow: hidden;
+  height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ========== Progress Bar ========== */
+.progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--anthro-coral), var(--anthro-coral-light));
+  z-index: 1000;
+  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ========== Navigation ========== */
+.nav-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 52px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--anthro-sand);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  z-index: 900;
+  font-size: 13px;
+  color: var(--anthro-mid-gray);
+}
+
+.nav-bar .slide-counter {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.nav-bar .nav-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.nav-bar button {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--anthro-sand);
+  border-radius: 8px;
+  background: white;
+  color: var(--anthro-warm-gray);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  font-size: 16px;
+}
+
+.nav-bar button:hover {
+  border-color: var(--anthro-coral);
+  color: var(--anthro-coral);
+  background: #FFF7ED;
+}
+
+.nav-bar button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.nav-bar .toc-btn {
+  width: auto;
+  padding: 0 14px;
+  font-size: 12px;
+  font-family: var(--font-body);
+  gap: 6px;
+}
+
+.nav-bar .key-hint {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+/* ========== Slide Container ========== */
+.slides-viewport {
+  height: calc(100vh - 52px);
+  overflow: hidden;
+  position: relative;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 60px 40px 80px;
+  opacity: 0;
+  transform: translateX(60px);
+  transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--anthro-light-gray) transparent;
+}
+
+.slide::-webkit-scrollbar { width: 6px; }
+.slide::-webkit-scrollbar-track { background: transparent; }
+.slide::-webkit-scrollbar-thumb { background: var(--anthro-light-gray); border-radius: 3px; }
+
+.slide.active {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.slide.exit-left {
+  opacity: 0;
+  transform: translateX(-60px);
+}
+
+.slide-inner {
+  max-width: var(--slide-max-w);
+  margin: 0 auto;
+}
+
+/* ========== Typography ========== */
+.slide-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--anthro-coral);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slide-label::before {
+  content: '';
+  display: inline-block;
+  width: 20px;
+  height: 1.5px;
+  background: var(--anthro-coral);
+}
+
+h1 {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 3.2rem;
+  line-height: 1.2;
+  color: var(--anthro-charcoal);
+  margin-bottom: 20px;
+  letter-spacing: -0.5px;
+}
+
+h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1.3;
+  color: var(--anthro-charcoal);
+  margin-bottom: 16px;
+}
+
+h3 {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--anthro-warm-gray);
+  margin-bottom: 10px;
+}
+
+p, li {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--anthro-warm-gray);
+}
+
+.lead {
+  font-size: 1.2rem;
+  line-height: 1.7;
+  color: var(--anthro-mid-gray);
+  font-weight: 300;
+  max-width: 680px;
+}
+
+.highlight {
+  color: var(--anthro-coral);
+  font-weight: 600;
+}
+
+.tag {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+}
+
+.tag-coral { background: #FFF7ED; color: var(--anthro-coral-dark); }
+.tag-gray { background: var(--anthro-sand); color: var(--anthro-warm-gray); }
+.tag-green { background: #F0FDF4; color: #166534; }
+
+/* ========== Cover Slide ========== */
+.cover-slide {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100vh - 172px);
+}
+
+.cover-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: #FFF7ED;
+  border: 1px solid #FDBA74;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--anthro-coral-dark);
+  margin-bottom: 32px;
+  width: fit-content;
+}
+
+.cover-badge .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--anthro-coral);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.cover-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 3.8rem;
+  line-height: 1.15;
+  color: var(--anthro-charcoal);
+  margin-bottom: 24px;
+  max-width: 800px;
+}
+
+.cover-title .coral { color: var(--anthro-coral); }
+
+.cover-subtitle {
+  font-size: 1.3rem;
+  font-weight: 300;
+  color: var(--anthro-mid-gray);
+  margin-bottom: 48px;
+  max-width: 600px;
+  line-height: 1.6;
+}
+
+.cover-meta {
+  display: flex;
+  gap: 32px;
+  font-size: 13px;
+  color: var(--anthro-mid-gray);
+  border-top: 1px solid var(--anthro-sand);
+  padding-top: 24px;
+}
+
+.cover-meta span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ========== Equation Block ========== */
+.equation-block {
+  background: var(--anthro-charcoal);
+  border-radius: 16px;
+  padding: 36px 44px;
+  margin: 28px 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.equation-block::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--anthro-coral), var(--anthro-coral-light), var(--anthro-coral));
+}
+
+.equation {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 1px;
+}
+
+.equation .eq-coral { color: var(--anthro-coral-light); }
+.equation .eq-dim { color: #78716C; }
+
+.equation-note {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: #A8A29E;
+  margin-top: 12px;
+  font-weight: 300;
+}
+
+/* ========== Cards Grid ========== */
+.cards-grid {
+  display: grid;
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.cards-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+.cards-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+.card {
+  background: white;
+  border: 1px solid var(--anthro-sand);
+  border-radius: 12px;
+  padding: 24px;
+  transition: all 0.3s;
+}
+
+.card:hover {
+  border-color: var(--anthro-coral);
+  box-shadow: 0 4px 24px rgba(217, 119, 87, 0.08);
+  transform: translateY(-2px);
+}
+
+.card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  margin-bottom: 14px;
+}
+
+.card-icon.coral { background: #FFF7ED; }
+.card-icon.gray { background: var(--anthro-warm-white); }
+.card-icon.green { background: #F0FDF4; }
+.card-icon.blue { background: #EFF6FF; }
+.card-icon.purple { background: #FAF5FF; }
+.card-icon.amber { background: #FFFBEB; }
+
+.card h4 {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--anthro-charcoal);
+  margin-bottom: 8px;
+}
+
+.card p {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--anthro-mid-gray);
+}
+
+/* ========== Code Block ========== */
+.code-block {
+  background: var(--code-bg);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 20px 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.code-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.code-dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.code-dots .d1 { background: #EF4444; }
+.code-dots .d2 { background: #F59E0B; }
+.code-dots .d3 { background: #22C55E; }
+
+.code-title {
+  font-size: 11px;
+  color: #78716C;
+  letter-spacing: 0.5px;
+}
+
+.code-body {
+  padding: 18px 22px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.code-body .cm { color: var(--code-comment); font-style: italic; }
+.code-body .kw { color: var(--code-purple); }
+.code-body .fn { color: var(--code-blue); }
+.code-body .str { color: var(--code-green); }
+.code-body .op { color: var(--code-orange); }
+.code-body .ty { color: var(--code-yellow); }
+.code-body .var { color: #E2E8F0; }
+
+/* ========== Table ========== */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 0.88rem;
+}
+
+.data-table thead th {
+  text-align: left;
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 0.78rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--anthro-mid-gray);
+  border-bottom: 2px solid var(--anthro-sand);
+  background: var(--anthro-warm-white);
+}
+
+.data-table thead th:first-child { border-radius: 8px 0 0 0; }
+.data-table thead th:last-child { border-radius: 0 8px 0 0; }
+
+.data-table tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--anthro-sand);
+  color: var(--anthro-warm-gray);
+  line-height: 1.5;
+  vertical-align: top;
+}
+
+.data-table tbody tr:hover {
+  background: #FFFBF7;
+}
+
+.data-table .cell-label {
+  font-weight: 600;
+  color: var(--anthro-charcoal);
+  font-size: 0.88rem;
+}
+
+.data-table code {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  background: var(--anthro-warm-white);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--anthro-coral-dark);
+}
+
+/* ========== Flow / Process Steps ========== */
+.flow-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 24px 0;
+}
+
+.flow-step {
+  display: flex;
+  gap: 20px;
+  position: relative;
+  padding-bottom: 28px;
+}
+
+.flow-step:last-child { padding-bottom: 0; }
+
+.flow-num {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--anthro-coral);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.flow-step:not(:last-child) .flow-num::after {
+  content: '';
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: calc(100% + 28px - 36px);
+  background: var(--anthro-sand);
+  z-index: -1;
+}
+
+.flow-content h4 {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--anthro-charcoal);
+  margin-bottom: 6px;
+  margin-top: 6px;
+}
+
+.flow-content p {
+  font-size: 0.88rem;
+  color: var(--anthro-mid-gray);
+  line-height: 1.6;
+}
+
+/* ========== Callout ========== */
+.callout {
+  border-left: 3px solid var(--anthro-coral);
+  padding: 20px 24px;
+  background: #FFFBF7;
+  border-radius: 0 10px 10px 0;
+  margin: 24px 0;
+}
+
+.callout p {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--anthro-warm-gray);
+}
+
+.callout .callout-title {
+  font-weight: 700;
+  color: var(--anthro-charcoal);
+  margin-bottom: 6px;
+  font-size: 0.95rem;
+}
+
+/* ========== Pipeline Visual ========== */
+.pipeline {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 24px 0;
+  flex-wrap: wrap;
+}
+
+.pipeline-step {
+  padding: 10px 20px;
+  background: white;
+  border: 1px solid var(--anthro-sand);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--anthro-warm-gray);
+  position: relative;
+  white-space: nowrap;
+}
+
+.pipeline-step:first-child { border-radius: 8px 0 0 8px; }
+.pipeline-step:last-child { border-radius: 0 8px 8px 0; }
+
+.pipeline-arrow {
+  width: 20px;
+  text-align: center;
+  color: var(--anthro-coral);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.pipeline-step.active-step {
+  background: var(--anthro-coral);
+  color: white;
+  border-color: var(--anthro-coral);
+}
+
+/* ========== Compare Block ========== */
+.compare-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.compare-item {
+  text-align: center;
+  padding: 28px 20px;
+  background: white;
+  border: 1px solid var(--anthro-sand);
+  border-radius: 12px;
+}
+
+.compare-item h4 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--anthro-charcoal);
+  margin-bottom: 10px;
+}
+
+.compare-item .analogy {
+  font-size: 0.82rem;
+  color: var(--anthro-coral);
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.compare-item p {
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+/* ========== Diagram Boxes ========== */
+.arch-diagram {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.arch-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--anthro-coral);
+  color: white;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.arch-detail {
+  padding: 14px 18px;
+  background: white;
+  border: 1px solid var(--anthro-sand);
+  border-radius: 10px;
+  font-size: 0.88rem;
+  color: var(--anthro-warm-gray);
+  display: flex;
+  align-items: center;
+}
+
+.arch-detail code {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  background: var(--anthro-warm-white);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--anthro-coral-dark);
+}
+
+/* ========== Section Divider ========== */
+.section-divider {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 220px);
+  text-align: center;
+}
+
+.section-divider .big-num {
+  font-family: var(--font-display);
+  font-size: 7rem;
+  font-weight: 900;
+  color: var(--anthro-sand);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.section-divider h2 {
+  font-size: 2.4rem;
+  margin-bottom: 12px;
+}
+
+.section-divider p {
+  max-width: 520px;
+  font-size: 1.1rem;
+}
+
+/* ========== Trend Card ========== */
+.trend-card {
+  display: flex;
+  gap: 20px;
+  padding: 24px;
+  background: white;
+  border: 1px solid var(--anthro-sand);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  transition: all 0.3s;
+}
+
+.trend-card:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+}
+
+.trend-num {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: var(--anthro-sand);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.trend-body h4 {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--anthro-charcoal);
+}
+
+.trend-body p {
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--anthro-mid-gray);
+}
+
+/* ========== Final Quote ========== */
+.final-quote {
+  background: var(--anthro-charcoal);
+  border-radius: 16px;
+  padding: 44px 48px;
+  margin: 32px 0;
+  position: relative;
+}
+
+.final-quote::before {
+  content: '\201C';
+  font-family: var(--font-display);
+  font-size: 6rem;
+  color: var(--anthro-coral);
+  position: absolute;
+  top: 10px;
+  left: 28px;
+  line-height: 1;
+  opacity: 0.5;
+}
+
+.final-quote p {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  line-height: 1.7;
+  color: #E7E5E4;
+  font-weight: 400;
+  position: relative;
+  z-index: 1;
+}
+
+.final-quote .quote-highlight {
+  color: var(--anthro-coral-light);
+  font-weight: 700;
+}
+
+/* ========== Reference Links ========== */
+.ref-list {
+  list-style: none;
+  margin: 16px 0;
+}
+
+.ref-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--anthro-sand);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.ref-list li .ref-idx {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--anthro-coral);
+  flex-shrink: 0;
+}
+
+.ref-list li a {
+  color: var(--anthro-warm-gray);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--anthro-light-gray);
+  transition: all 0.2s;
+}
+
+.ref-list li a:hover {
+  color: var(--anthro-coral);
+  border-bottom-color: var(--anthro-coral);
+}
+
+/* ========== TOC Overlay ========== */
+.toc-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(28,25,23,0.5);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toc-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.toc-panel {
+  background: white;
+  border-radius: 16px;
+  padding: 36px 40px;
+  max-width: 560px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.15);
+  transform: translateY(20px);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.toc-overlay.open .toc-panel {
+  transform: translateY(0);
+}
+
+.toc-panel h3 {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--anthro-charcoal);
+}
+
+.toc-list {
+  list-style: none;
+}
+
+.toc-list li {
+  padding: 0;
+}
+
+.toc-list button {
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  color: var(--anthro-warm-gray);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toc-list button:hover {
+  background: #FFF7ED;
+  color: var(--anthro-coral-dark);
+}
+
+.toc-list button.current {
+  background: #FFF7ED;
+  color: var(--anthro-coral);
+  font-weight: 600;
+}
+
+.toc-list .toc-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--anthro-mid-gray);
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.toc-list .toc-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--anthro-sand);
+}
+
+.toc-list .toc-section-label {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--anthro-coral);
+  padding: 0 14px;
+  margin-bottom: 6px;
+}
+
+/* ========== Animations ========== */
+.fade-in { animation: fadeIn 0.6s ease-out forwards; }
+.fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.stagger-1 { animation-delay: 0.1s; opacity: 0; }
+.stagger-2 { animation-delay: 0.2s; opacity: 0; }
+.stagger-3 { animation-delay: 0.3s; opacity: 0; }
+.stagger-4 { animation-delay: 0.4s; opacity: 0; }
+.stagger-5 { animation-delay: 0.5s; opacity: 0; }
+.stagger-6 { animation-delay: 0.6s; opacity: 0; }
+
+/* ========== Responsive ========== */
+@media (max-width: 768px) {
+  .slide { padding: 40px 20px 60px; }
+  .cover-title { font-size: 2.4rem; }
+  h1 { font-size: 2.2rem; }
+  h2 { font-size: 1.6rem; }
+  .cards-grid.cols-2, .cards-grid.cols-3 { grid-template-columns: 1fr; }
+  .compare-row { grid-template-columns: 1fr; }
+  .arch-diagram { grid-template-columns: 1fr; }
+  .equation { font-size: 1.4rem; }
+  .pipeline { flex-direction: column; align-items: stretch; }
+  .pipeline-arrow { transform: rotate(90deg); }
+}
+
+/* ========== Inline code ========== */
+p code, li code {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  background: var(--anthro-warm-white);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--anthro-coral-dark);
+  border: 1px solid var(--anthro-sand);
+}
+
+/* ========== Two column layout ========== */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin: 20px 0;
+}
+
+@media (max-width: 768px) {
+  .two-col { grid-template-columns: 1fr; }
+}
+
+/* ul/li styling */
+ul.bullet-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+
+ul.bullet-list li {
+  padding: 6px 0 6px 20px;
+  position: relative;
+  font-size: 0.92rem;
+}
+
+ul.bullet-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 14px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--anthro-coral);
+}
+
+/* Permission mode badges */
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  margin: 4px 4px 4px 0;
+}
+
+.mode-default { background: #F0FDF4; color: #166534; }
+.mode-plan { background: #EFF6FF; color: #1E40AF; }
+.mode-auto { background: #FFF7ED; color: var(--anthro-coral-dark); }
+.mode-bypass { background: #FEF2F2; color: #991B1B; }
+</style>
+</head>
+<body>
+
+<!-- Progress Bar -->
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- TOC Overlay -->
+<div class="toc-overlay" id="tocOverlay" onclick="if(event.target===this)closeTOC()">
+  <div class="toc-panel">
+    <h3>目录导航</h3>
+    <ul class="toc-list" id="tocList"></ul>
+  </div>
+</div>
+
+<!-- Slides -->
+<div class="slides-viewport" id="viewport">
+
+  <!-- ============ Slide 0: Cover ============ -->
+  <div class="slide active" data-title="封面">
+    <div class="slide-inner cover-slide">
+      <div class="cover-badge fade-in-up stagger-1">
+        <span class="dot"></span>
+        内部技术培训
+      </div>
+      <h1 class="cover-title fade-in-up stagger-2">
+        Agent Harness<br>
+        <span class="coral">&</span> Claude Code<br>
+        实践解析
+      </h1>
+      <p class="cover-subtitle fade-in-up stagger-3">
+        从概念到源码：深入理解 AI Agent 的「操作系统」<br>
+        ——让模型从聪明的实习生变成可靠的生产力工具
+      </p>
+      <div class="cover-meta fade-in-up stagger-4">
+        <span>2026</span>
+        <span>16 个章节</span>
+        <span>按 <kbd style="padding:2px 6px;background:var(--anthro-sand);border-radius:4px;font-family:var(--font-mono);font-size:11px;">&#8592;</kbd> <kbd style="padding:2px 6px;background:var(--anthro-sand);border-radius:4px;font-family:var(--font-mono);font-size:11px;">&#8594;</kbd> 翻页</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 1: 什么是 Agent Harness ============ -->
+  <div class="slide" data-title="什么是 Agent Harness">
+    <div class="slide-inner">
+      <div class="slide-label">01 / 核心概念</div>
+      <h2>什么是 Agent Harness？</h2>
+      <p class="lead">Harness 是除了模型之外的所有软件基础设施——负责把模型的智能转化为可靠、可控、可长期运行的实际工作能力。</p>
+
+      <div class="equation-block">
+        <div class="equation">
+          <span class="eq-coral">Agent</span>
+          <span class="eq-dim"> = </span>
+          Model <span class="eq-dim">(LLM)</span>
+          <span class="eq-dim"> + </span>
+          <span class="eq-coral">Harness</span>
+          <span class="eq-dim"> (驾驭层)</span>
+        </div>
+        <div class="equation-note">模型负责"思考"，Harness 负责一切工程可靠性</div>
+      </div>
+
+      <div class="compare-row">
+        <div class="compare-item">
+          <h4>Model</h4>
+          <div class="analogy">= CPU</div>
+          <p>负责推理与文本生成。Claude、GPT、Gemini 等大语言模型是 Agent 的「大脑」</p>
+        </div>
+        <div class="compare-item">
+          <h4>Harness</h4>
+          <div class="analogy">= 操作系统</div>
+          <p>上下文管理、工具调用、状态持久化、权限控制、多Agent协调——模型的「完整运行环境」</p>
+        </div>
+        <div class="compare-item">
+          <h4>Agent</h4>
+          <div class="analogy">= 完整应用</div>
+          <p>能在真实世界中稳定运行数天、执行复杂任务、自我验证和恢复的「生产级 AI 助手」</p>
+        </div>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">2026 共识</div>
+        <p>模型差距正在缩小，真正拉开差距的是 <strong>Harness Engineering（驾驭层工程）</strong>。竞争优势已从"谁的模型更强"转向"谁的 Harness 更可靠"。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 2: 为什么需要 ============ -->
+  <div class="slide" data-title="为什么需要 Harness">
+    <div class="slide-inner">
+      <div class="slide-label">02 / 问题背景</div>
+      <h2>为什么需要 Agent Harness？</h2>
+      <p class="lead">原始 LLM 有四个致命局限，每一个都足以让 Agent 在生产环境中失败。</p>
+
+      <div class="cards-grid cols-2" style="margin-top:28px;">
+        <div class="card">
+          <div class="card-icon coral">&#x1f9e0;</div>
+          <h4>上下文窗口有限</h4>
+          <p>长任务（数百步工具调用）容易「失忆」或上下文污染。模型无法自行管理有限的注意力窗口。</p>
+        </div>
+        <div class="card">
+          <div class="card-icon gray">&#x1f4be;</div>
+          <h4>无持久状态</h4>
+          <p>一次对话结束就忘记之前所有工作。无法跨会话、跨机器延续任务进度。</p>
+        </div>
+        <div class="card">
+          <div class="card-icon green">&#x1f527;</div>
+          <h4>无法执行现实操作</h4>
+          <p>不能直接读写文件、运行代码、调用 API、验证结果。模型只能「说」不能「做」。</p>
+        </div>
+        <div class="card">
+          <div class="card-icon purple">&#x1f300;</div>
+          <h4>容易漂移或提前结束</h4>
+          <p>长时任务中模型可能半途而废、跳过测试、状态混乱。缺乏外部约束和验证机制。</p>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:24px;">
+        <p><strong>Harness 的使命</strong>：解决这些模型自身无法解决的问题，让 Agent 在真实世界中稳定工作数天甚至数周，而非只在单次对话里「炫技」。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 3: 核心组件 ============ -->
+  <div class="slide" data-title="核心组件全景">
+    <div class="slide-inner">
+      <div class="slide-label">03 / 架构总览</div>
+      <h2>Harness 核心组件全景</h2>
+      <p class="lead">一个完整的 Agent Harness 通常包含六大组件——共同构成 Agent 的「操作系统」。</p>
+
+      <div class="cards-grid cols-3" style="margin-top:28px;">
+        <div class="card">
+          <div class="card-icon coral">&#x1f3af;</div>
+          <h4>提示与引导层</h4>
+          <p>系统提示预设、初始化 Prompt、生命周期钩子（Hooks）。让模型"开机"时就知道规则、目标和行为规范。</p>
+        </div>
+        <div class="card">
+          <div class="card-icon blue">&#x2699;&#xfe0f;</div>
+          <h4>工具与执行层</h4>
+          <p>工具调用拦截、执行、结果回填；Bash/Code 执行沙箱。把模型的「想做」变成真实的「做了」。</p>
+        </div>
+        <div class="card">
+          <div class="card-icon green">&#x1f4da;</div>
+          <h4>上下文与内存层</h4>
+          <p>上下文压缩、状态持久化、虚拟文件系统、Git 版本控制、进度日志。跨会话记忆、防止上下文爆炸。</p>
+        </div>
+        <div class="card">
+          <div class="card-icon purple">&#x1f5fa;&#xfe0f;</div>
+          <h4>规划与协调层</h4>
+          <p>任务分解（Planning）、子 Agent 生成与调度。把大任务拆成可管理的小步，支持多 Agent 协作。</p>
+        </div>
+        <div class="card">
+          <div class="card-icon amber">&#x1f6e1;&#xfe0f;</div>
+          <h4>验证与安全层</h4>
+          <p>中间件、自动测试、人类审批、Human-in-the-Loop、Guardrails。保证每一步都正确、安全、可审计。</p>
+        </div>
+        <div class="card">
+          <div class="card-icon gray">&#x1f4c1;</div>
+          <h4>状态与持久层</h4>
+          <p>工作空间、Artifact 存储、会话续接机制。让 Agent「下班后」还能无缝接上工作。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 4: 工作流程 ============ -->
+  <div class="slide" data-title="典型工作流程">
+    <div class="slide-inner">
+      <div class="slide-label">04 / 运行机制</div>
+      <h2>Harness 典型工作流程</h2>
+      <p class="lead">长时任务通过五步循环实现可靠执行。Anthropic 正是通过这种设计让 Claude 构建整个生产级 Web 应用。</p>
+
+      <div class="flow-steps" style="margin-top:32px;">
+        <div class="flow-step">
+          <div class="flow-num">1</div>
+          <div class="flow-content">
+            <h4>初始化（Initializer）</h4>
+            <p>Harness 用专用 Prompt 启动第一个会话，创建文件系统结构、<code>feature_list.json</code>、Git 仓库、进度日志等。为后续工作建立完整基础设施。</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">2</div>
+          <div class="flow-content">
+            <h4>循环执行（Working Agent）</h4>
+            <p>每个新会话：读取进度文件 → 挑选一个可验证的小任务 → 执行工具调用 → 运行端到端测试 → Git 提交 → 更新进度 → 保存状态。</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">3</div>
+          <div class="flow-content">
+            <h4>上下文管理</h4>
+            <p>自动压缩历史、把大输出转存到文件、用 Skills 逐步暴露工具，避免一开始就塞满上下文窗口。</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">4</div>
+          <div class="flow-content">
+            <h4>验证闭环</h4>
+            <p>每步都强制跑测试。人类可审批、失败自动重试或回滚。<strong>生成与评估分离</strong>——借鉴 GAN 架构，独立的 Generator 和 Evaluator 确保质量。</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">5</div>
+          <div class="flow-content">
+            <h4>结束 / 交接</h4>
+            <p>任务完成或需要人工介入时，Harness 负责干净交接。支持 Git 提交、进度摘要、状态序列化。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 5: Harness vs Framework vs SDK ============ -->
+  <div class="slide" data-title="Harness vs Framework vs SDK">
+    <div class="slide-inner">
+      <div class="slide-label">05 / 概念辨析</div>
+      <h2>Harness vs Framework vs SDK</h2>
+      <p class="lead">三个容易混淆的概念，本质区别在于抽象层级和「开箱即用」程度。</p>
+
+      <div class="compare-row" style="margin-top:28px;">
+        <div class="compare-item">
+          <h4>Agent Framework</h4>
+          <div class="analogy">= 乐高积木</div>
+          <p>如 LangChain、LlamaIndex。提供构建块（工具、记忆、链），需要自己组装成完整系统。灵活但需要大量胶水代码。</p>
+        </div>
+        <div class="compare-item">
+          <h4>Agent SDK</h4>
+          <div class="analogy">= 工具包</div>
+          <p>如 Anthropic Agent SDK。更底层的编程接口，提供 API 封装和基础工具。面向开发者构建自定义系统。</p>
+        </div>
+        <div class="compare-item" style="border-color:var(--anthro-coral);">
+          <h4>Agent Harness</h4>
+          <div class="analogy">= 完整机器人</div>
+          <p>如 Claude Code。已经组装好的、有明确观点（opinionated）的运行时系统。直接拿来就能跑长任务实验和生产。关注「工程可靠性」。</p>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:20px;">
+        <p><strong>关键区别</strong>：Framework 给你零件让你搭，Harness 给你一个已经能跑的、经过生产验证的完整系统。Harness 是 opinionated 的——它对如何正确运行 Agent 有自己的强烈观点。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 6: Section Divider ============ -->
+  <div class="slide" data-title="Claude Code 深度解析">
+    <div class="slide-inner">
+      <div class="section-divider">
+        <div class="big-num">II</div>
+        <h2>Claude Code<br>生产级 Harness 深度解析</h2>
+        <p style="color:var(--anthro-mid-gray);">基于源码映射的架构分析——Harness 如何让 Claude 从「生成一段代码」进化到「写完整应用」</p>
+        <div style="margin-top:32px;">
+          <span class="tag tag-coral">QueryEngine</span>
+          <span class="tag tag-coral">Compaction</span>
+          <span class="tag tag-coral">Tool System</span>
+          <span class="tag tag-coral">Permission</span>
+          <span class="tag tag-coral">Swarm</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 7: QueryEngine ============ -->
+  <div class="slide" data-title="QueryEngine 核心引擎">
+    <div class="slide-inner">
+      <div class="slide-label">07 / 核心引擎</div>
+      <h2>QueryEngine + ask() 循环</h2>
+      <p class="lead">整个 Harness 的「心脏」。不是一次性对话，而是状态驱动的持续循环。</p>
+
+      <div style="display:grid;grid-template-columns:1fr;gap:24px;margin-top:24px;">
+        <div>
+          <h3 style="margin-bottom:12px;"><code>QueryEngine.ts</code> — Agent Loop 伪代码</h3>
+          <div class="code-block">
+            <div class="code-header">
+              <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+              <div class="code-title">restored-src/src/QueryEngine.ts</div>
+            </div>
+            <div class="code-body"><span class="kw">while</span> (<span class="kw">true</span>) {                         <span class="cm">// 多轮 tool-use 循环</span>
+  <span class="fn">normalizeMessagesForAPI</span>();          <span class="cm">// 消息标准化 + 上下文组装</span>
+  <span class="fn">assembleToolPool</span>();                 <span class="cm">// 动态加载工具池</span>
+  <span class="kw">await</span> <span class="fn">callClaudeApi</span>(streaming);     <span class="cm">// 调用 Claude Messages API</span>
+
+  <span class="kw">if</span> (tool_use) {
+    <span class="kw">await</span> <span class="fn">runPreToolUseHooks</span>();        <span class="cm">// 前置钩子</span>
+    <span class="kw">await</span> <span class="fn">checkPermissions</span>();           <span class="cm">// 权限校验</span>
+    <span class="kw">const</span> <span class="var">result</span> = <span class="kw">await</span> tool.<span class="fn">call</span>();  <span class="cm">// 执行真实操作</span>
+    <span class="fn">appendToolResultToHistory</span>();        <span class="cm">// 结果回填上下文</span>
+    <span class="kw">await</span> <span class="fn">runPostToolUseHooks</span>();       <span class="cm">// 后置钩子</span>
+    <span class="kw">continue</span>;                           <span class="cm">// 继续循环</span>
+  }
+  <span class="kw">break</span>;                                <span class="cm">// 模型不再调工具，结束本轮</span>
+}</div>
+          </div>
+        </div>
+
+        <div class="cards-grid cols-3">
+          <div class="card">
+            <h4>Stateful Loop</h4>
+            <p>不是一问一答，而是持续的状态驱动循环。模型每次调用工具后，结果回填到上下文，驱动下一轮决策。</p>
+          </div>
+          <div class="card">
+            <h4>Streaming + Tool Delta</h4>
+            <p>支持流式输出和工具增量调用，实时在 TUI（React Terminal UI）中展示思考过程。</p>
+          </div>
+          <div class="card">
+            <h4>Multi-Tool 并行</h4>
+            <p>模型一次可调用多个独立工具，Harness 按依赖关系执行并回填结果，最大化并行效率。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 8: Context & Memory ============ -->
+  <div class="slide" data-title="上下文与内存管理">
+    <div class="slide-inner">
+      <div class="slide-label">08 / 内存层</div>
+      <h2>上下文与内存管理</h2>
+      <p class="lead">解决模型「失忆」和上下文爆炸的核心 Harness 组件。让 Agent 能跨数天、跨机器继续工作。</p>
+
+      <div class="two-col" style="margin-top:28px;">
+        <div>
+          <h3>Micro-compaction 微压缩</h3>
+          <p style="margin:8px 0 16px;font-size:0.92rem;color:var(--anthro-mid-gray);">
+            <code>compact/apiMicrocompact.ts</code>
+          </p>
+          <ul class="bullet-list">
+            <li>重复的 <code>ls</code>、<code>cat</code> 等工具输出自动折叠成一行摘要</li>
+            <li>老消息自动总结，保持在上下文窗口之内</li>
+            <li>智能识别哪些信息可以安全丢弃</li>
+          </ul>
+
+          <h3 style="margin-top:24px;">CLAUDE.md 发现机制</h3>
+          <p style="margin:8px 0 16px;font-size:0.92rem;color:var(--anthro-mid-gray);">
+            <code>attachments.ts</code>
+          </p>
+          <ul class="bullet-list">
+            <li>启动时自动扫描项目根目录、用户目录、全局目录的 <code>CLAUDE.md</code></li>
+            <li>把规则、偏好、领域知识注入上下文</li>
+            <li>实现「零配置」的项目感知</li>
+          </ul>
+        </div>
+
+        <div>
+          <h3>Memdir 持久化内存系统</h3>
+          <p style="margin:8px 0 16px;font-size:0.92rem;color:var(--anthro-mid-gray);">
+            <code>memdir/memdir.ts</code>
+          </p>
+          <div class="code-block" style="margin-top:0;">
+            <div class="code-header">
+              <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+              <div class="code-title">Memory 目录结构</div>
+            </div>
+            <div class="code-body"><span class="str">~/.claude/projects/&lt;slug&gt;/memory/</span>
+  <span class="op">├──</span> <span class="fn">MEMORY.md</span>       <span class="cm"># 全局索引 (≤200行)</span>
+  <span class="op">├──</span> <span class="fn">user_role.md</span>    <span class="cm"># 用户角色信息</span>
+  <span class="op">├──</span> <span class="fn">feedback_*.md</span>   <span class="cm"># 行为反馈</span>
+  <span class="op">├──</span> <span class="fn">project_*.md</span>   <span class="cm"># 项目状态</span>
+  <span class="op">└──</span> <span class="fn">reference_*.md</span>  <span class="cm"># 外部资源引用</span></div>
+          </div>
+
+          <div class="callout" style="margin-top:16px;">
+            <p>每个事实单独存成 <code>.md</code> 文件，带 frontmatter 元数据。支持按类型分类（user / feedback / project / reference），实现跨会话的「长期记忆」。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 9: Tool Execution ============ -->
+  <div class="slide" data-title="工具执行层">
+    <div class="slide-inner">
+      <div class="slide-label">09 / 工具层</div>
+      <h2>工具执行层</h2>
+      <p class="lead">把模型的「想做什么」变成「真实做了什么」的桥梁。工具不是裸调用，而是被全生命周期管理。</p>
+
+      <h3 style="margin-top:24px;">执行流水线</h3>
+      <div class="pipeline" style="margin-top:12px;">
+        <div class="pipeline-step">Schema 验证</div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">权限检查</div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">Pre Hooks</div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step active-step">call() 执行</div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">Post Hooks</div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">结果映射</div>
+      </div>
+
+      <h3 style="margin-top:32px;">统一 Tool 接口</h3>
+      <p style="font-size:0.92rem;color:var(--anthro-mid-gray);margin-bottom:12px;"><code>Tool.ts</code> — <code>buildTool()</code> 每个工具必须实现：</p>
+      <div class="code-block">
+        <div class="code-header">
+          <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+          <div class="code-title">Tool 接口定义</div>
+        </div>
+        <div class="code-body"><span class="fn">buildTool</span>({
+  <span class="var">name</span>:             <span class="str">"FileEditTool"</span>,
+  <span class="var">inputSchema</span>:      <span class="ty">Zod Schema</span>,          <span class="cm">// 严格类型验证</span>
+  <span class="var">validateInput</span>:    (input) => <span class="ty">boolean</span>,   <span class="cm">// 输入合法性检查</span>
+  <span class="var">checkPermissions</span>: (input) => <span class="ty">Decision</span>,  <span class="cm">// 权限决策</span>
+  <span class="var">call</span>:             (input) => <span class="ty">Result</span>,    <span class="cm">// 真实执行</span>
+  <span class="var">renderUI</span>:         (result) => <span class="ty">JSX</span>,     <span class="cm">// TUI 渲染</span>
+  <span class="var">shouldDefer</span>:      <span class="kw">true</span>,                 <span class="cm">// 延迟加载，节省上下文</span>
+})</div>
+      </div>
+
+      <h3 style="margin-top:24px;">关键工具矩阵</h3>
+      <table class="data-table">
+        <thead>
+          <tr><th>工具</th><th>功能</th><th>Harness 价值</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="cell-label">FileEditTool</td><td>精确字符串替换编辑文件</td><td>比模型重写整个文件更安全、更精确</td></tr>
+          <tr><td class="cell-label">BashTool</td><td>在沙箱中执行 Shell 命令</td><td>隔离危险操作，自动分类命令危险等级</td></tr>
+          <tr><td class="cell-label">LSPTool</td><td>语言服务器协议集成</td><td>提供编译器级别的代码理解</td></tr>
+          <tr><td class="cell-label">AgentTool</td><td>生成子 Agent</td><td>实现多 Agent Swarm 协作</td></tr>
+          <tr><td class="cell-label">Read / Write / Glob / Grep</td><td>文件系统操作</td><td>比 Bash 更安全、更可审计的文件访问</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ Slide 10: Permission & Safety ============ -->
+  <div class="slide" data-title="验证与安全层">
+    <div class="slide-inner">
+      <div class="slide-label">10 / 安全层</div>
+      <h2>验证与安全层</h2>
+      <p class="lead">Claude Code Harness 最强、最 opinionated 的部分。核心原则：<strong>不信任模型，强制在安全沙箱里干活</strong>。</p>
+
+      <h3 style="margin-top:28px;">四种权限模式</h3>
+      <div style="margin:16px 0 24px;">
+        <span class="mode-badge mode-default">&#x2705; default — 逐项确认</span>
+        <span class="mode-badge mode-plan">&#x1f4cb; plan — 先只读规划，确认后执行</span>
+        <span class="mode-badge mode-auto">&#x26a1; auto — 自动允许安全操作</span>
+        <span class="mode-badge mode-bypass">&#x26a0;&#xfe0f; bypass — 全部放行（仅开发用）</span>
+      </div>
+
+      <h3>Permission Decision 流程</h3>
+      <div class="pipeline" style="margin:12px 0 24px;">
+        <div class="pipeline-step">Tool Call</div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">checkPermissions()</div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step active-step">匹配规则</div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step" style="background:#F0FDF4;color:#166534;border-color:#BBF7D0;">Allow</div>
+        <div class="pipeline-step" style="background:#FFF7ED;color:var(--anthro-coral-dark);border-color:#FDBA74;">Ask User</div>
+        <div class="pipeline-step" style="background:#FEF2F2;color:#991B1B;border-color:#FECACA;">Deny</div>
+      </div>
+
+      <div class="two-col">
+        <div>
+          <h3>Bash 安全分类器</h3>
+          <p style="font-size:0.92rem;color:var(--anthro-mid-gray);margin:8px 0;"><code>bashClassifier</code> 自动判断 Shell 命令危险程度：</p>
+          <ul class="bullet-list">
+            <li><strong>安全</strong>：<code>ls</code>, <code>cat</code>, <code>git status</code></li>
+            <li><strong>需确认</strong>：<code>npm install</code>, <code>git push</code></li>
+            <li><strong>高危</strong>：<code>rm -rf</code>, <code>git push --force</code></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Plan 模式（HITL）</h3>
+          <p style="font-size:0.92rem;color:var(--anthro-mid-gray);margin:8px 0;">经典 Human-in-the-Loop 设计：</p>
+          <ul class="bullet-list">
+            <li>Agent 先只读探索代码库</li>
+            <li>生成详细实施计划</li>
+            <li>用户审批后才执行写操作</li>
+            <li><strong>SandboxManager</strong> 隔离高危命令</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:20px;">
+        <p><strong>生产落地关键</strong>：Harness 不是「信任模型」，而是强制「模型只能在安全沙箱里干活」。所有写操作都经过权限检查，高危命令需要人类批准。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 11: State & Session ============ -->
+  <div class="slide" data-title="状态持久化与会话">
+    <div class="slide-inner">
+      <div class="slide-label">11 / 持久层</div>
+      <h2>状态持久化与会话管理</h2>
+      <p class="lead">让 Agent 真正「下班后还能继续上班」——跨会话、跨机器的无缝延续。</p>
+
+      <div class="cards-grid cols-2" style="margin-top:28px;">
+        <div class="card">
+          <div class="card-icon coral">&#x1f4be;</div>
+          <h4>Session 持久化</h4>
+          <p>每个会话以 JSON 格式存储在 <code>~/.claude/sessions/&lt;uuid&gt;.json</code>，包含完整对话历史、工具调用记录和状态快照。</p>
+        </div>
+        <div class="card">
+          <div class="card-icon green">&#x1f504;</div>
+          <h4>Resume / Continue</h4>
+          <p>支持 <code>--continue</code>（继续上次会话）、<code>--resume</code>（选择历史会话恢复）、<code>/resume</code> 交互式恢复。</p>
+        </div>
+        <div class="card">
+          <div class="card-icon blue">&#x23ee;&#xfe0f;</div>
+          <h4>FileHistorySnapshot</h4>
+          <p>支持 <code>/rewind</code> 回滚任意历史版本。每次工具执行前自动快照，失败可精确回退。</p>
+        </div>
+        <div class="card">
+          <div class="card-icon purple">&#x1f30d;</div>
+          <h4>Teleport 跨机器续接</h4>
+          <p>OAuth + Git 同步，实现「在笔记本上开始，在服务器上继续」。会话状态通过云端传递。</p>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:20px;">
+        <div class="callout-title">Worktree Sessions</div>
+        <p>每个任务可以开独立 Git worktree 分支，在隔离环境中工作。实验失败直接丢弃 worktree，不影响主分支。这是 Claude Code 独特的「安全实验」机制。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 12: Multi-Agent ============ -->
+  <div class="slide" data-title="多Agent协调 (Swarm)">
+    <div class="slide-inner">
+      <div class="slide-label">12 / 协调层</div>
+      <h2>多 Agent 协调（Swarm）</h2>
+      <p class="lead">通过文件系统通信实现的轻量级多 Agent 架构。Team Lead 负责任务分解和质量把关。</p>
+
+      <div class="two-col" style="margin-top:28px;">
+        <div>
+          <h3>核心工具</h3>
+          <table class="data-table" style="margin-top:12px;">
+            <thead><tr><th>工具</th><th>功能</th></tr></thead>
+            <tbody>
+              <tr><td class="cell-label">TeamCreateTool</td><td>创建团队，初始化共享任务列表</td></tr>
+              <tr><td class="cell-label">TaskCreateTool</td><td>创建任务，设置依赖关系</td></tr>
+              <tr><td class="cell-label">SendMessageTool</td><td>Agent 间发送消息</td></tr>
+              <tr><td class="cell-label">AgentTool</td><td>生成专用子 Agent（探索/计划/执行）</td></tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top:24px;">通信机制</h3>
+          <ul class="bullet-list">
+            <li>通过 <code>TeamFile</code> + <code>Mailbox</code> 文件通信</li>
+            <li>团队配置存储在 <code>~/.claude/teams/</code></li>
+            <li>共享任务列表在 <code>~/.claude/tasks/</code></li>
+            <li>Agent 间异步消息传递</li>
+          </ul>
+        </div>
+
+        <div>
+          <h3>Team Lead 架构</h3>
+          <div class="code-block" style="margin-top:12px;">
+            <div class="code-header">
+              <div class="code-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
+              <div class="code-title">Swarm 工作流</div>
+            </div>
+            <div class="code-body"><span class="fn">Team Lead</span> <span class="cm">(主 Agent)</span>
+  <span class="op">├──</span> <span class="fn">TaskCreate</span>: 分解任务
+  <span class="op">├──</span> <span class="fn">AgentTool</span>: 派遣子 Agent
+  <span class="op">│</span>    <span class="op">├──</span> <span class="ty">Explore Agent</span> <span class="cm"># 只读探索</span>
+  <span class="op">│</span>    <span class="op">├──</span> <span class="ty">Plan Agent</span>    <span class="cm"># 架构规划</span>
+  <span class="op">│</span>    <span class="op">├──</span> <span class="ty">Code Agent</span>    <span class="cm"># 代码实现</span>
+  <span class="op">│</span>    <span class="op">└──</span> <span class="ty">Review Agent</span>  <span class="cm"># 代码审查</span>
+  <span class="op">├──</span> <span class="fn">SendMessage</span>: 协调分工
+  <span class="op">└──</span> <span class="fn">TaskUpdate</span>: 跟踪进度</div>
+          </div>
+
+          <div class="callout" style="margin-top:16px;">
+            <p><strong>最佳实践</strong>：主 Agent 作为 orchestrator 只负责任务分配和质量把关，所有实施工作推给子 Agent。借鉴 GAN 思路：生成与评估分离。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 13: Capability Summary ============ -->
+  <div class="slide" data-title="能力总结表">
+    <div class="slide-inner">
+      <div class="slide-label">13 / 全景对照</div>
+      <h2>Harness 能力 vs Claude Code 实现</h2>
+      <p class="lead">Claude Code 如何用具体模块填充 Harness 的每一个能力要求。</p>
+
+      <table class="data-table" style="margin-top:24px;">
+        <thead>
+          <tr><th>Harness 能力</th><th>Claude Code 实现模块</th><th>解决的模型原生痛点</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cell-label">持久状态</td>
+            <td><code>Memdir</code> + <code>Session JSON</code> + <code>Teleport</code></td>
+            <td>无记忆、会话结束就忘</td>
+          </tr>
+          <tr>
+            <td class="cell-label">上下文管理</td>
+            <td><code>Micro-compaction</code> + <code>CLAUDE.md</code></td>
+            <td>上下文爆炸</td>
+          </tr>
+          <tr>
+            <td class="cell-label">工具可靠执行</td>
+            <td><code>Tool 接口</code> + <code>Pre/Post Hooks</code> + 沙箱</td>
+            <td>无法安全执行真实操作</td>
+          </tr>
+          <tr>
+            <td class="cell-label">验证闭环</td>
+            <td><code>Permission System</code> + <code>Plan 模式</code></td>
+            <td>容易漂移、幻觉</td>
+          </tr>
+          <tr>
+            <td class="cell-label">长时任务协调</td>
+            <td><code>askLoop</code> + <code>Multi-Agent Swarm</code></td>
+            <td>任务半途而废</td>
+          </tr>
+          <tr>
+            <td class="cell-label">可恢复性</td>
+            <td><code>Git Worktree</code> + <code>Rewind</code> + <code>Resume</code></td>
+            <td>失败后无法继续</td>
+          </tr>
+          <tr>
+            <td class="cell-label">生成/评估分离</td>
+            <td><code>Generator Agent</code> + <code>Evaluator Agent</code></td>
+            <td>模型自我评价倾向于肯定自身输出</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout" style="margin-top:20px;">
+        <p><strong>核心洞察</strong>：所有模型做不到的工程可靠性，都被 Harness 补齐了。这就是为什么 Claude Code 能让模型真正「写完整应用」而非只「生成一段代码」。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 14: 2026 Trends ============ -->
+  <div class="slide" data-title="2026 行业趋势">
+    <div class="slide-inner">
+      <div class="slide-label">14 / 趋势展望</div>
+      <h2>2026 行业趋势</h2>
+      <p class="lead">Agent Harness 领域的四个重要方向——从工程实践到学科建设。</p>
+
+      <div style="margin-top:28px;">
+        <div class="trend-card">
+          <div class="trend-num">01</div>
+          <div class="trend-body">
+            <h4>Harness 轻量化</h4>
+            <p>随着模型能力提升，Harness 逐步「瘦身」——很多曾经靠 Harness 实现的逻辑（规划、简单验证）被模型吸收。Harness 只保留最核心的持久化、安全和协调部分。Anthropic 建议：<strong>定期验证每个 Harness 层是否仍然必要</strong>。</p>
+          </div>
+        </div>
+        <div class="trend-card">
+          <div class="trend-num">02</div>
+          <div class="trend-body">
+            <h4>Harness Engineering 成为新学科</h4>
+            <p>像传统软件工程一样，需要设计、测试、迭代 Harness 本身。将出现专门的设计模式、测试方法论和评估框架。工程师角色从「代码实现者」转向「Agent 编排者」。</p>
+          </div>
+        </div>
+        <div class="trend-card">
+          <div class="trend-num">03</div>
+          <div class="trend-body">
+            <h4>轨迹数据竞争</h4>
+            <p>好的 Harness 能产生高质量的成功/失败轨迹日志，用于继续微调模型，形成正反馈循环。<strong>竞争优势从「谁的模型好」转向「谁的轨迹数据好」</strong>。</p>
+          </div>
+        </div>
+        <div class="trend-card">
+          <div class="trend-num">04</div>
+          <div class="trend-body">
+            <h4>自然语言 Harness</h4>
+            <p>用自然语言定义整个驾驭逻辑，降低 Harness 构建门槛。CLAUDE.md、Skills、Hooks 等机制已经在实践「用人话定义 Agent 行为」。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 15: Best Practices ============ -->
+  <div class="slide" data-title="最佳实践">
+    <div class="slide-inner">
+      <div class="slide-label">15 / 实践指南</div>
+      <h2>Harness 设计最佳实践</h2>
+      <p class="lead">来自 Anthropic 工程博客和生产实践的五条核心原则。</p>
+
+      <div class="flow-steps" style="margin-top:28px;">
+        <div class="flow-step">
+          <div class="flow-num" style="background:var(--anthro-charcoal);">A</div>
+          <div class="flow-content">
+            <h4>生成与评估分离</h4>
+            <p>模型是糟糕的自我 QA——它倾向于赞美自己的输出。借鉴 GAN 架构：用独立的 Generator 和 Evaluator Agent。Generator 构建，Evaluator 按照明确标准打分。</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num" style="background:var(--anthro-charcoal);">B</div>
+          <div class="flow-content">
+            <h4>评估标准塑造输出</h4>
+            <p>仅仅写下评分标准就能改善 Generator 的初始输出——甚至在评估实际运行之前。清晰的验收标准本身就是最好的 Prompt。</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num" style="background:var(--anthro-charcoal);">C</div>
+          <div class="flow-content">
+            <h4>用结构化 Artifact 维持连续性</h4>
+            <p>进度日志（<code>claude-progress.txt</code>）、Git 提交、初始化脚本——让 Agent 跨会话无缝衔接。每个会话结束时写下进度摘要，下个会话开始时读取。</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num" style="background:var(--anthro-charcoal);">D</div>
+          <div class="flow-content">
+            <h4>主 Agent 只做协调和审查</h4>
+            <p>把所有实施工作推给子 Agent，主 Agent（orchestrator）专注任务分配和质量门槛。避免「既当裁判又当运动员」。</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num" style="background:var(--anthro-charcoal);">E</div>
+          <div class="flow-content">
+            <h4>随模型进步移除不必要的层</h4>
+            <p>每个 Harness 组件都编码了对模型能力不足的假设。定期验证哪些层已不再必要，保持 Harness 精简高效。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 16: Takeaways ============ -->
+  <div class="slide" data-title="核心洞察与参考">
+    <div class="slide-inner">
+      <div class="slide-label">16 / 总结</div>
+      <h2>核心洞察</h2>
+
+      <div class="final-quote">
+        <p>
+          <span class="quote-highlight">模型决定上限，Harness 决定下限和落地能力。</span><br>
+          没有好的 Harness，再强的模型也只是「聪明但不可靠的实习生」；<br>
+          有了优秀的 Harness，即使是中等模型也能变成可靠的生产力工具。
+        </p>
+      </div>
+
+      <div class="cards-grid cols-2" style="margin-top:28px;">
+        <div class="card" style="border-left:3px solid var(--anthro-coral);">
+          <h4>五个关键要点</h4>
+          <ul class="bullet-list">
+            <li>Agent = Model + Harness，两者缺一不可</li>
+            <li>2026 竞争焦点从模型转向 Harness 工程</li>
+            <li>生成与评估分离是质量保证的基石</li>
+            <li>状态持久化是长时任务的生命线</li>
+            <li>安全层是生产落地的不可妥协底线</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>参考资源</h4>
+          <ul class="ref-list">
+            <li>
+              <span class="ref-idx">[1]</span>
+              <a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents" target="_blank">Effective harnesses for long-running agents — Anthropic</a>
+            </li>
+            <li>
+              <span class="ref-idx">[2]</span>
+              <a href="https://www.anthropic.com/engineering/harness-design-long-running-apps" target="_blank">Harness design for long-running application development</a>
+            </li>
+            <li>
+              <span class="ref-idx">[3]</span>
+              <a href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents" target="_blank">Demystifying evals for AI agents — Anthropic</a>
+            </li>
+            <li>
+              <span class="ref-idx">[4]</span>
+              <a href="https://deepwiki.com/ChinaSiro/claude-code-sourcemap/2-core-architecture" target="_blank">Claude Code 源码架构映射 — DeepWiki</a>
+            </li>
+            <li>
+              <span class="ref-idx">[5]</span>
+              <a href="https://resources.anthropic.com/hubfs/2026%20Agentic%20Coding%20Trends%20Report.pdf" target="_blank">2026 Agentic Coding Trends Report — Anthropic</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin-top:48px;padding-top:24px;border-top:1px solid var(--anthro-sand);">
+        <p style="font-size:0.85rem;color:var(--anthro-mid-gray);">Agent Harness & Claude Code 实践解析 &mdash; 内部技术培训 &mdash; 2026</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Navigation Bar -->
+<nav class="nav-bar">
+  <div style="display:flex;align-items:center;gap:16px;">
+    <button class="toc-btn" onclick="openTOC()" title="目录">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v1.5H2zm0 4.25h12v1.5H2zm0 4.25h12v1.5H2z"/></svg>
+      目录
+    </button>
+    <span class="slide-counter" id="slideCounter">01 / 16</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <span class="key-hint">&#8592; &#8594; 翻页</span>
+    <div class="nav-buttons">
+      <button id="prevBtn" onclick="prevSlide()" title="上一页">&larr;</button>
+      <button id="nextBtn" onclick="nextSlide()" title="下一页">&rarr;</button>
+    </div>
+  </div>
+</nav>
+
+<script>
+// ========== Slide Navigation ==========
+const slides = document.querySelectorAll('.slide');
+const total = slides.length;
+let current = 0;
+
+function goToSlide(n, direction) {
+  if (n < 0 || n >= total || n === current) return;
+  const old = slides[current];
+  const next = slides[n];
+
+  // Determine direction
+  const goingForward = direction !== undefined ? direction === 'forward' : n > current;
+
+  // Exit old slide
+  old.classList.remove('active');
+
+  // Set starting position for new slide (inline, before reflow)
+  next.style.transition = 'none';
+  next.style.transform = goingForward ? 'translateX(60px)' : 'translateX(-60px)';
+  next.style.opacity = '0';
+
+  // Force reflow so starting position is applied
+  void next.offsetWidth;
+
+  // Now enable transition and clear inline styles so .active class takes effect
+  next.style.transition = '';
+  next.style.transform = '';
+  next.style.opacity = '';
+  next.classList.add('active');
+  next.scrollTop = 0;
+
+  current = n;
+  updateUI();
+}
+
+function nextSlide() { goToSlide(current + 1, 'forward'); }
+function prevSlide() { goToSlide(current - 1, 'backward'); }
+
+function updateUI() {
+  // Counter
+  document.getElementById('slideCounter').textContent =
+    String(current + 1).padStart(2, '0') + ' / ' + String(total).padStart(2, '0');
+
+  // Progress bar
+  document.getElementById('progressBar').style.width =
+    ((current + 1) / total * 100) + '%';
+
+  // Buttons
+  document.getElementById('prevBtn').disabled = current === 0;
+  document.getElementById('nextBtn').disabled = current === total - 1;
+
+  // TOC current
+  document.querySelectorAll('.toc-list button').forEach((btn, i) => {
+    btn.classList.toggle('current', i === current);
+  });
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', (e) => {
+  if (document.getElementById('tocOverlay').classList.contains('open')) {
+    if (e.key === 'Escape') closeTOC();
+    return;
+  }
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+    e.preventDefault();
+    nextSlide();
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    prevSlide();
+  } else if (e.key === 'Escape') {
+    closeTOC();
+  }
+});
+
+// Touch support
+let touchStartX = 0;
+document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+document.addEventListener('touchend', (e) => {
+  const diff = touchStartX - e.changedTouches[0].clientX;
+  if (Math.abs(diff) > 60) {
+    diff > 0 ? nextSlide() : prevSlide();
+  }
+});
+
+// ========== TOC ==========
+function buildTOC() {
+  const list = document.getElementById('tocList');
+  const sections = [
+    { start: 0, label: '基础概念' },
+    { start: 6, label: 'Claude Code 深度解析' },
+    { start: 14, label: '趋势与总结' }
+  ];
+
+  let sectionIdx = 0;
+  slides.forEach((slide, i) => {
+    // Check if we need a section header
+    if (sectionIdx < sections.length && i === sections[sectionIdx].start) {
+      if (i > 0) {
+        const divider = document.createElement('li');
+        divider.className = 'toc-section';
+        divider.innerHTML = '<div class="toc-section-label">' + sections[sectionIdx].label + '</div>';
+        list.appendChild(divider);
+      }
+      sectionIdx++;
+    }
+
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.innerHTML = '<span class="toc-num">' + String(i + 1).padStart(2, '0') + '</span>' +
+                    '<span>' + slide.dataset.title + '</span>';
+    btn.onclick = () => { goToSlide(i); closeTOC(); };
+    if (i === current) btn.classList.add('current');
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
+}
+
+function openTOC() {
+  updateUI();
+  document.getElementById('tocOverlay').classList.add('open');
+}
+
+function closeTOC() {
+  document.getElementById('tocOverlay').classList.remove('open');
+}
+
+// ========== Init ==========
+buildTOC();
+updateUI();
+</script>
+</body>
+</html>

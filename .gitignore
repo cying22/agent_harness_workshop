@@ -1,0 +1,4 @@
+.claude/
+.venv/
+claude-code-sourcemap/
+labs/.sessions/
