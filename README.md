@@ -1,6 +1,6 @@
 # Agent Harness Workshop
 
-> 从零搭建一个 Mini Agent Harness，用 5 个递进实验理解 AI Agent 的工程架构。
+> 从零搭建一个 Mini Agent Harness，用 6 个递进实验理解 AI Agent 的工程架构。
 
 ---
 
