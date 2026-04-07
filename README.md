@@ -1,6 +1,16 @@
-# Agent Harness Workshop
-
-> 从零搭建一个 Mini Agent Harness，用 6 个递进实验理解 AI Agent 的工程架构。
+<div align="center">
+  <img src="asset/header.svg" alt="Agent Harness Workshop" width="100%" />
+  <br/>
+  <p>
+    <strong>从零搭建一个 Mini Agent Harness，用 6 个递进实验理解 Agent Harness 的工程架构。</strong>
+  </p>
+  <p>
+    <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+"/>
+    <img src="https://img.shields.io/badge/Amazon_Bedrock-Claude-FF9900?style=flat-square&logo=amazonaws&logoColor=white" alt="Amazon Bedrock"/>
+    <img src="https://img.shields.io/badge/Labs-6_Modules-3ecfb2?style=flat-square" alt="6 Labs"/>
+    <img src="https://img.shields.io/badge/Duration-~3_Hours-8899aa?style=flat-square" alt="~3 Hours"/>
+  </p>
+</div>
 
 ---
 

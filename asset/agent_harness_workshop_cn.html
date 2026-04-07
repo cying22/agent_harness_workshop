@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Harness 工作坊 — 从零构建生产级 AI Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --anthro-coral: #E8956F;
+  --anthro-coral-light: #F0AB8A;
+  --anthro-coral-dark: #D97757;
+  --anthro-charcoal: #F5F5F4;
+  --anthro-dark: #E7E5E4;
+  --anthro-warm-gray: #D6D3D1;
+  --anthro-mid-gray: #A8A29E;
+  --anthro-light-gray: #44403C;
+  --anthro-cream: #0C0A09;
+  --anthro-warm-white: #1C1917;
+  --anthro-sand: #292524;
+  --code-bg: #0C0A09;
+  --code-green: #86EFAC;
+  --code-blue: #93C5FD;
+  --code-yellow: #FDE68A;
+  --code-purple: #C4B5FD;
+  --code-orange: #FDBA74;
+  --code-comment: #78716C;
+  --slide-max-w: 1120px;
+  --font-display: 'Noto Serif SC', 'Georgia', serif;
+  --font-body: 'Noto Sans SC', 'Helvetica Neue', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Menlo', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--anthro-cream);
+  color: var(--anthro-charcoal);
+  overflow: hidden;
+  height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ========== Progress Bar ========== */
+.progress-bar {
+  position: fixed; top: 0; left: 0; height: 3px;
+  background: linear-gradient(90deg, var(--anthro-coral), var(--anthro-coral-light));
+  z-index: 1000; transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ========== Navigation ========== */
+.nav-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; height: 52px;
+  background: rgba(12,10,9,0.92); backdrop-filter: blur(12px);
+  border-top: 1px solid var(--anthro-sand);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 32px; z-index: 900; font-size: 13px; color: var(--anthro-mid-gray);
+}
+.nav-bar .slide-counter { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.5px; }
+.nav-bar .nav-buttons { display: flex; gap: 8px; }
+.nav-bar button {
+  width: 36px; height: 36px; border: 1px solid var(--anthro-sand); border-radius: 8px;
+  background: #1C1917; color: var(--anthro-mid-gray); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-size: 16px;
+}
+.nav-bar button:hover { border-color: var(--anthro-coral); color: var(--anthro-coral); background: #291A13; }
+.nav-bar button:disabled { opacity: 0.3; cursor: not-allowed; }
+.nav-bar .toc-btn { width: auto; padding: 0 14px; font-size: 12px; font-family: var(--font-body); gap: 6px; }
+.nav-bar .key-hint { font-size: 11px; opacity: 0.6; }
+
+/* ========== Slide Container ========== */
+.slides-viewport { height: calc(100vh - 52px); overflow: hidden; position: relative; }
+
+.slide {
+  position: absolute; inset: 0; overflow-y: auto; padding: 60px 40px 80px;
+  opacity: 0; transform: translateX(60px);
+  transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1), transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none; scrollbar-width: thin; scrollbar-color: var(--anthro-light-gray) transparent;
+}
+.slide::-webkit-scrollbar { width: 6px; }
+.slide::-webkit-scrollbar-track { background: transparent; }
+.slide::-webkit-scrollbar-thumb { background: #44403C; border-radius: 3px; }
+.slide.active { opacity: 1; transform: translateX(0); pointer-events: auto; z-index: 1; }
+
+.slide-inner { max-width: var(--slide-max-w); margin: 0 auto; }
+
+/* ========== Typography ========== */
+.slide-label {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--anthro-coral);
+  margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+}
+.slide-label::before { content: ''; display: inline-block; width: 20px; height: 1.5px; background: var(--anthro-coral); }
+
+h1 { font-family: var(--font-display); font-weight: 900; font-size: 3.2rem; line-height: 1.2; color: var(--anthro-charcoal); margin-bottom: 20px; letter-spacing: -0.5px; }
+h2 { font-family: var(--font-display); font-weight: 700; font-size: 2rem; line-height: 1.3; color: var(--anthro-charcoal); margin-bottom: 16px; }
+h3 { font-family: var(--font-body); font-weight: 600; font-size: 1.1rem; color: var(--anthro-warm-gray); margin-bottom: 10px; }
+p, li { font-size: 1rem; line-height: 1.75; color: var(--anthro-warm-gray); }
+.lead { font-size: 1.2rem; line-height: 1.7; color: var(--anthro-mid-gray); font-weight: 300; max-width: 680px; }
+.highlight { color: var(--anthro-coral); font-weight: 600; }
+.tag { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: var(--font-mono); letter-spacing: 0.5px; }
+.tag-coral { background: #291A13; color: var(--anthro-coral); }
+.tag-gray { background: var(--anthro-sand); color: var(--anthro-mid-gray); }
+
+/* ========== Cover Slide ========== */
+.cover-slide { display: flex; flex-direction: column; justify-content: center; min-height: calc(100vh - 172px); }
+.cover-badge {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px;
+  background: #291A13; border: 1px solid #6B3A24; border-radius: 100px;
+  font-size: 13px; font-weight: 500; color: var(--anthro-coral-dark); margin-bottom: 32px; width: fit-content;
+}
+.cover-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--anthro-coral); animation: pulse-dot 2s ease-in-out infinite; }
+@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+.cover-title { font-family: var(--font-display); font-weight: 900; font-size: 3.8rem; line-height: 1.15; color: var(--anthro-charcoal); margin-bottom: 24px; max-width: 800px; }
+.cover-title .coral { color: var(--anthro-coral); }
+.cover-subtitle { font-size: 1.3rem; font-weight: 300; color: var(--anthro-mid-gray); margin-bottom: 48px; max-width: 600px; line-height: 1.6; }
+.cover-meta { display: flex; gap: 32px; font-size: 13px; color: var(--anthro-mid-gray); border-top: 1px solid var(--anthro-sand); padding-top: 24px; }
+.cover-meta span { display: flex; align-items: center; gap: 6px; }
+
+/* ========== Equation Block ========== */
+.equation-block { background: #161412; border-radius: 16px; padding: 36px 44px; margin: 28px 0; text-align: center; position: relative; overflow: hidden; }
+.equation-block::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--anthro-coral), var(--anthro-coral-light), var(--anthro-coral)); }
+.equation { font-family: var(--font-display); font-size: 2rem; font-weight: 700; color: #F5F5F4; letter-spacing: 1px; }
+.equation .eq-coral { color: var(--anthro-coral-light); }
+.equation .eq-dim { color: #78716C; }
+.equation-note { font-family: var(--font-body); font-size: 0.85rem; color: #A8A29E; margin-top: 12px; font-weight: 300; }
+
+/* ========== Cards Grid ========== */
+.cards-grid { display: grid; gap: 16px; margin: 24px 0; }
+.cards-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+.cards-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.card { background: #1C1917; border: 1px solid var(--anthro-sand); border-radius: 12px; padding: 24px; transition: all 0.3s; }
+.card:hover { border-color: var(--anthro-coral); box-shadow: 0 4px 24px rgba(232, 149, 111, 0.12); transform: translateY(-2px); }
+.card-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 14px; }
+.card-icon.coral { background: #2A1810; }
+.card-icon.gray { background: var(--anthro-warm-white); }
+.card h4 { font-family: var(--font-body); font-weight: 600; font-size: 0.95rem; color: var(--anthro-charcoal); margin-bottom: 8px; }
+.card p { font-size: 0.85rem; line-height: 1.6; color: var(--anthro-mid-gray); }
+
+/* ========== Compare Block ========== */
+.compare-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 24px 0; }
+.compare-item { text-align: center; padding: 28px 20px; background: #1C1917; border: 1px solid var(--anthro-sand); border-radius: 12px; }
+.compare-item h4 { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; color: var(--anthro-charcoal); margin-bottom: 10px; }
+.compare-item .analogy { font-size: 0.82rem; color: var(--anthro-coral); font-weight: 500; margin-bottom: 10px; }
+.compare-item p { font-size: 0.85rem; text-align: left; }
+
+/* ========== Callout ========== */
+.callout { border-left: 3px solid var(--anthro-coral); padding: 20px 24px; background: #1A1210; border-radius: 0 10px 10px 0; margin: 24px 0; }
+.callout p { font-size: 1rem; line-height: 1.7; color: var(--anthro-warm-gray); }
+.callout .callout-title { font-weight: 700; color: var(--anthro-charcoal); margin-bottom: 6px; font-size: 0.95rem; }
+
+/* ========== Flow / Process Steps ========== */
+.flow-steps { display: flex; flex-direction: column; gap: 0; margin: 24px 0; }
+.flow-step { display: flex; gap: 20px; position: relative; padding-bottom: 28px; }
+.flow-step:last-child { padding-bottom: 0; }
+.flow-num {
+  width: 36px; height: 36px; border-radius: 50%; background: var(--anthro-coral); color: #0C0A09;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 14px; font-weight: 600; flex-shrink: 0; position: relative; z-index: 2;
+}
+.flow-step:not(:last-child) .flow-num::after {
+  content: ''; position: absolute; top: 36px; left: 50%; transform: translateX(-50%);
+  width: 2px; height: calc(100% + 28px - 36px); background: var(--anthro-sand); z-index: -1;
+}
+.flow-content h4 { font-weight: 600; font-size: 1rem; color: var(--anthro-charcoal); margin-bottom: 6px; margin-top: 6px; }
+.flow-content p { font-size: 0.88rem; color: var(--anthro-mid-gray); line-height: 1.6; }
+
+/* ========== Section Divider ========== */
+.section-divider { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: calc(100vh - 220px); text-align: center; }
+.section-divider .big-num { font-family: var(--font-display); font-size: 7rem; font-weight: 900; color: var(--anthro-sand); line-height: 1; margin-bottom: 8px; }
+.section-divider h2 { font-size: 2.4rem; margin-bottom: 12px; }
+.section-divider p { max-width: 520px; font-size: 1.1rem; }
+
+/* ========== Experiment Slide ========== */
+.exp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.exp-badge { display: inline-flex; align-items: center; gap: 10px; }
+.exp-num { font-family: var(--font-mono); font-size: 12px; font-weight: 600; padding: 4px 12px; background: var(--anthro-coral); color: #0C0A09; border-radius: 6px; }
+.exp-title { font-family: var(--font-display); font-weight: 700; font-size: 2rem; color: var(--anthro-charcoal); }
+.exp-time { font-family: var(--font-mono); font-size: 13px; color: var(--anthro-coral); padding: 6px 14px; border: 1px solid var(--anthro-coral); border-radius: 8px; }
+
+.exp-body { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 24px; }
+.exp-section h3 { font-size: 0.92rem; color: var(--anthro-coral); font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.exp-section .pain-text { font-size: 0.9rem; color: var(--anthro-mid-gray); line-height: 1.7; padding: 16px; background: #1C1917; border: 1px solid var(--anthro-sand); border-radius: 10px; }
+
+ul.build-list { list-style: none; padding: 0; margin: 0; }
+ul.build-list li { padding: 6px 0 6px 20px; position: relative; font-size: 0.9rem; color: var(--anthro-warm-gray); line-height: 1.6; }
+ul.build-list li::before { content: ''; position: absolute; left: 0; top: 14px; width: 6px; height: 6px; border-radius: 50%; background: var(--anthro-coral); }
+
+.exp-concepts { margin-bottom: 24px; }
+.exp-concepts h4 { font-size: 0.82rem; color: var(--anthro-mid-gray); font-weight: 500; margin-bottom: 10px; letter-spacing: 0.5px; }
+.exp-concepts .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.exp-result {
+  padding: 16px 24px; background: #161412; border-radius: 12px; border-left: 3px solid var(--anthro-coral);
+  display: flex; align-items: center; gap: 12px;
+}
+.exp-result .check { color: var(--anthro-coral); font-size: 18px; flex-shrink: 0; }
+.exp-result p { font-size: 0.92rem; color: var(--anthro-warm-gray); font-weight: 500; }
+.exp-result .result-highlight { color: var(--anthro-coral-light); font-weight: 600; }
+.exp-footer { display: flex; justify-content: flex-end; margin-top: 16px; font-family: var(--font-mono); font-size: 12px; color: var(--anthro-light-gray); }
+
+/* ========== Summary Stats ========== */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+.stat-card { text-align: center; padding: 28px 20px; background: #1C1917; border: 1px solid var(--anthro-sand); border-radius: 12px; }
+.stat-card .stat-num { font-family: var(--font-display); font-size: 2.4rem; font-weight: 900; color: var(--anthro-coral); line-height: 1; margin-bottom: 8px; }
+.stat-card .stat-label { font-size: 0.82rem; color: var(--anthro-mid-gray); font-weight: 400; }
+
+/* ========== Final Quote ========== */
+.final-quote {
+  background: #161412; border-radius: 16px; padding: 44px 48px; margin: 32px 0; position: relative;
+}
+.final-quote::before { content: '\201C'; font-family: var(--font-display); font-size: 6rem; color: var(--anthro-coral); position: absolute; top: 10px; left: 28px; line-height: 1; opacity: 0.5; }
+.final-quote p { font-family: var(--font-display); font-size: 1.3rem; line-height: 1.7; color: #E7E5E4; font-weight: 400; position: relative; z-index: 1; }
+.final-quote .quote-highlight { color: var(--anthro-coral-light); font-weight: 700; }
+
+/* ========== TOC Overlay ========== */
+.toc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.3s; display: flex; align-items: center; justify-content: center; }
+.toc-overlay.open { opacity: 1; pointer-events: auto; }
+.toc-panel { background: #1C1917; border-radius: 16px; padding: 36px 40px; max-width: 560px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,0.5); transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+.toc-overlay.open .toc-panel { transform: translateY(0); }
+.toc-panel h3 { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; margin-bottom: 20px; color: var(--anthro-charcoal); }
+.toc-list { list-style: none; }
+.toc-list li { padding: 0; }
+.toc-list button { width: 100%; text-align: left; padding: 10px 14px; border: none; background: none; font-family: var(--font-body); font-size: 0.92rem; color: var(--anthro-warm-gray); cursor: pointer; border-radius: 8px; transition: all 0.2s; display: flex; align-items: center; gap: 12px; }
+.toc-list button:hover { background: #291A13; color: var(--anthro-coral-dark); }
+.toc-list button.current { background: #291A13; color: var(--anthro-coral); font-weight: 600; }
+.toc-list .toc-num { font-family: var(--font-mono); font-size: 11px; color: var(--anthro-mid-gray); width: 28px; text-align: right; flex-shrink: 0; }
+.toc-list .toc-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--anthro-sand); }
+.toc-list .toc-section-label { font-size: 10px; font-family: var(--font-mono); letter-spacing: 2px; text-transform: uppercase; color: var(--anthro-coral); padding: 0 14px; margin-bottom: 6px; }
+
+/* ========== Animations ========== */
+.fade-in { animation: fadeIn 0.6s ease-out forwards; }
+.fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.stagger-1 { animation-delay: 0.1s; opacity: 0; }
+.stagger-2 { animation-delay: 0.2s; opacity: 0; }
+.stagger-3 { animation-delay: 0.3s; opacity: 0; }
+.stagger-4 { animation-delay: 0.4s; opacity: 0; }
+
+/* ========== Responsive ========== */
+@media (max-width: 768px) {
+  .slide { padding: 40px 20px 60px; }
+  .cover-title { font-size: 2.4rem; }
+  h1 { font-size: 2.2rem; }
+  h2 { font-size: 1.6rem; }
+  .cards-grid.cols-2, .cards-grid.cols-3 { grid-template-columns: 1fr; }
+  .compare-row { grid-template-columns: 1fr; }
+  .exp-body { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: 1fr; }
+  .equation { font-size: 1.4rem; }
+}
+
+p code, li code {
+  font-family: var(--font-mono); font-size: 0.82em; background: #1C1917;
+  padding: 2px 6px; border-radius: 4px; color: var(--anthro-coral); border: 1px solid #292524;
+}
+</style>
+</head>
+<body>
+
+<!-- Progress Bar -->
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- TOC Overlay -->
+<div class="toc-overlay" id="tocOverlay" onclick="if(event.target===this)closeTOC()">
+  <div class="toc-panel">
+    <h3>目录导航</h3>
+    <ul class="toc-list" id="tocList"></ul>
+  </div>
+</div>
+
+<!-- Slides -->
+<div class="slides-viewport" id="viewport">
+
+  <!-- ============ Slide 0: Cover ============ -->
+  <div class="slide active" data-title="封面">
+    <div class="slide-inner cover-slide">
+      <div class="cover-badge fade-in-up stagger-1">
+        <span class="dot"></span>
+        动手实操工作坊
+      </div>
+      <h1 class="cover-title fade-in-up stagger-2">
+        Agent Harness<br>
+        <span class="coral">工作坊</span>
+      </h1>
+      <p class="cover-subtitle fade-in-up stagger-3">
+        从零构建生产级 AI Agent<br>
+        ——6 个递进式实验，约 3 小时
+      </p>
+      <div class="cover-meta fade-in-up stagger-4">
+        <span>核心洞察：<strong style="color:var(--anthro-coral)">Agent = 模型 + Harness</strong></span>
+        <span>按 <kbd style="padding:2px 6px;background:#292524;border-radius:4px;font-family:var(--font-mono);font-size:11px;color:#A8A29E;">&#8592;</kbd> <kbd style="padding:2px 6px;background:#292524;border-radius:4px;font-family:var(--font-mono);font-size:11px;color:#A8A29E;">&#8594;</kbd> 翻页</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 1: Harness 六层架构 ============ -->
+  <div class="slide" data-title="Harness 六层架构">
+    <div class="slide-inner">
+      <div class="slide-label">架构总览</div>
+      <h2>Harness 六层架构</h2>
+      <p class="lead">将原始大模型转化为可靠的生产级 Agent 的六个核心层</p>
+
+      <div class="cards-grid cols-2" style="margin-top:28px;">
+        <div class="card">
+          <div class="card-icon coral">&#x1f3af;</div>
+          <h4>01 &nbsp; 提示与引导层</h4>
+          <p>系统提示词、钩子、行为规则</p>
+        </div>
+        <div class="card">
+          <div class="card-icon coral">&#x2699;&#xfe0f;</div>
+          <h4>02 &nbsp; 工具与执行层</h4>
+          <p>统一工具接口、沙箱执行</p>
+        </div>
+        <div class="card">
+          <div class="card-icon coral">&#x1f6e1;&#xfe0f;</div>
+          <h4>03 &nbsp; 安全与验证层</h4>
+          <p>权限中间件、人机协同、自动测试</p>
+        </div>
+        <div class="card">
+          <div class="card-icon coral">&#x1f9e0;</div>
+          <h4>04 &nbsp; 上下文与记忆层</h4>
+          <p>微压缩、会话持久化</p>
+        </div>
+        <div class="card">
+          <div class="card-icon coral">&#x1f5fa;&#xfe0f;</div>
+          <h4>05 &nbsp; 规划与协调层</h4>
+          <p>任务分解、多 Agent 调度</p>
+        </div>
+        <div class="card">
+          <div class="card-icon coral">&#x1f4be;</div>
+          <h4>06 &nbsp; 状态与持久层</h4>
+          <p>工作区存储、产物管理</p>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:20px;">
+        <p><em>模型能力正在趋同 —— <strong>Harness 才是竞争力的分水岭。</strong></em></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 2: 实验 1 ============ -->
+  <div class="slide" data-title="实验 1：提示与引导层">
+    <div class="slide-inner">
+      <div class="exp-header">
+        <div class="exp-badge">
+          <span class="exp-num">实验 1</span>
+          <span class="exp-title">提示与引导层</span>
+        </div>
+        <span class="exp-time">30 分钟</span>
+      </div>
+
+      <div class="exp-body">
+        <div class="exp-section">
+          <h3>&#x26a0;&#xfe0f; 痛点</h3>
+          <div class="pain-text">裸模型行为不可预测 —— 不遵守项目规范、不理解自身角色、无法拒绝不安全请求。</div>
+        </div>
+        <div class="exp-section">
+          <h3>&#x1f528; 你将构建</h3>
+          <ul class="build-list">
+            <li>系统提示词组装（角色 + 规则注入）</li>
+            <li>CLAUDE.md 项目记忆自动发现</li>
+            <li>钩子生命周期（PreToolUse / PostToolUse）</li>
+            <li>后续所有实验的基础 Agent Loop</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="exp-concepts">
+        <h4>关键概念</h4>
+        <div class="tags">
+          <span class="tag tag-coral">提示词工程</span>
+          <span class="tag tag-coral">项目记忆</span>
+          <span class="tag tag-coral">钩子生命周期</span>
+        </div>
+      </div>
+
+      <div class="exp-result">
+        <span class="check">&#x2714;</span>
+        <p><span class="result-highlight">成果：</span>Agent 遵循一致的行为规则，在执行前理解项目上下文。</p>
+      </div>
+      <div class="exp-footer">1 / 6</div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 3: 实验 2 ============ -->
+  <div class="slide" data-title="实验 2：工具与执行层">
+    <div class="slide-inner">
+      <div class="exp-header">
+        <div class="exp-badge">
+          <span class="exp-num">实验 2</span>
+          <span class="exp-title">工具与执行层</span>
+        </div>
+        <span class="exp-time">35 分钟</span>
+      </div>
+
+      <div class="exp-body">
+        <div class="exp-section">
+          <h3>&#x26a0;&#xfe0f; 痛点</h3>
+          <div class="pain-text">Agent 有引导但无法行动 —— 工具调用只生成文本，无法真正执行文件读写或命令。</div>
+        </div>
+        <div class="exp-section">
+          <h3>&#x1f528; 你将构建</h3>
+          <ul class="build-list">
+            <li>统一工具接口（抽象基类）</li>
+            <li>三个核心工具：ReadFile、WriteFile、Bash</li>
+            <li>执行流水线：校验 → 执行 → 返回结果</li>
+            <li>Anthropic API 的 JSON Schema 工具定义</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="exp-concepts">
+        <h4>关键概念</h4>
+        <div class="tags">
+          <span class="tag tag-coral">工厂模式</span>
+          <span class="tag tag-coral">工具 Schema</span>
+          <span class="tag tag-coral">输入校验</span>
+        </div>
+      </div>
+
+      <div class="exp-result">
+        <span class="check">&#x2714;</span>
+        <p><span class="result-highlight">成果：</span>Agent 获得真正的「手脚」—— 读写文件、执行 Shell 命令。</p>
+      </div>
+      <div class="exp-footer">2 / 6</div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 4: 实验 3 ============ -->
+  <div class="slide" data-title="实验 3：安全与权限层">
+    <div class="slide-inner">
+      <div class="exp-header">
+        <div class="exp-badge">
+          <span class="exp-num">实验 3</span>
+          <span class="exp-title">安全与权限层</span>
+        </div>
+        <span class="exp-time">30 分钟</span>
+      </div>
+
+      <div class="exp-body">
+        <div class="exp-section">
+          <h3>&#x26a0;&#xfe0f; 痛点</h3>
+          <div class="pain-text">Agent 能执行操作但零安全检查 —— 如果被要求执行 <code>rm -rf /</code>，它会毫不犹豫地执行。</div>
+        </div>
+        <div class="exp-section">
+          <h3>&#x1f528; 你将构建</h3>
+          <ul class="build-list">
+            <li>三级权限控制（允许 / 拒绝 / 询问）</li>
+            <li>Bash 命令分类器 + 模式检测</li>
+            <li>人机协同（HITL）确认系统</li>
+            <li>危险模式正则与安全规则引擎</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="exp-concepts">
+        <h4>关键概念</h4>
+        <div class="tags">
+          <span class="tag tag-coral">中间件模式</span>
+          <span class="tag tag-coral">命令分类</span>
+          <span class="tag tag-coral">HITL 流程</span>
+        </div>
+      </div>
+
+      <div class="exp-result">
+        <span class="check">&#x2714;</span>
+        <p><span class="result-highlight">成果：</span>安全执行 —— <code>ls</code> 自动放行，<code>sudo rm</code> 需要人工确认。</p>
+      </div>
+      <div class="exp-footer">3 / 6</div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 5: 实验 4 ============ -->
+  <div class="slide" data-title="实验 4：上下文与记忆层">
+    <div class="slide-inner">
+      <div class="exp-header">
+        <div class="exp-badge">
+          <span class="exp-num">实验 4</span>
+          <span class="exp-title">上下文与记忆层</span>
+        </div>
+        <span class="exp-time">25 分钟</span>
+      </div>
+
+      <div class="exp-body">
+        <div class="exp-section">
+          <h3>&#x26a0;&#xfe0f; 痛点</h3>
+          <div class="pain-text">长对话导致 Token 爆炸；重启 Agent 后所有状态和上下文全部丢失。</div>
+        </div>
+        <div class="exp-section">
+          <h3>&#x1f528; 你将构建</h3>
+          <ul class="build-list">
+            <li>微压缩：压缩旧输出、保留近期上下文</li>
+            <li>Token 估算与上下文窗口管理</li>
+            <li>项目记忆系统（CLAUDE.md 自动注入）</li>
+            <li>跨会话知识持久化</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="exp-concepts">
+        <h4>关键概念</h4>
+        <div class="tags">
+          <span class="tag tag-coral">Token 管理</span>
+          <span class="tag tag-coral">上下文压缩</span>
+          <span class="tag tag-coral">记忆分层</span>
+        </div>
+      </div>
+
+      <div class="exp-result">
+        <span class="check">&#x2714;</span>
+        <p><span class="result-highlight">成果：</span>Agent 处理长会话不超限，跨重启保留项目知识。</p>
+      </div>
+      <div class="exp-footer">4 / 6</div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 6: 实验 5 ============ -->
+  <div class="slide" data-title="实验 5：规划与协调层">
+    <div class="slide-inner">
+      <div class="exp-header">
+        <div class="exp-badge">
+          <span class="exp-num">实验 5</span>
+          <span class="exp-title">规划与协调层</span>
+        </div>
+        <span class="exp-time">25 分钟</span>
+      </div>
+
+      <div class="exp-body">
+        <div class="exp-section">
+          <h3>&#x26a0;&#xfe0f; 痛点</h3>
+          <div class="pain-text">复杂多步任务迫使单个 Agent 在同一上下文中处理一切 —— 无法分解、委派或并行。</div>
+        </div>
+        <div class="exp-section">
+          <h3>&#x1f528; 你将构建</h3>
+          <ul class="build-list">
+            <li>AgentTool：生成独立上下文的子 Agent</li>
+            <li>任务管理系统（创建 / 列表 / 更新）</li>
+            <li>SendMessageTool：Agent 间通信</li>
+            <li>递归生成防护机制</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="exp-concepts">
+        <h4>关键概念</h4>
+        <div class="tags">
+          <span class="tag tag-coral">领队模式</span>
+          <span class="tag tag-coral">上下文隔离</span>
+          <span class="tag tag-coral">任务追踪</span>
+        </div>
+      </div>
+
+      <div class="exp-result">
+        <span class="check">&#x2714;</span>
+        <p><span class="result-highlight">成果：</span>多 Agent 协调 —— 主 Agent 分解任务并调度子 Agent。</p>
+      </div>
+      <div class="exp-footer">5 / 6</div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 7: 实验 6 ============ -->
+  <div class="slide" data-title="实验 6：状态与持久层">
+    <div class="slide-inner">
+      <div class="exp-header">
+        <div class="exp-badge">
+          <span class="exp-num">实验 6</span>
+          <span class="exp-title">状态与持久层</span>
+        </div>
+        <span class="exp-time">20 分钟</span>
+      </div>
+
+      <div class="exp-body">
+        <div class="exp-section">
+          <h3>&#x26a0;&#xfe0f; 痛点</h3>
+          <div class="pain-text">退出程序后一切丢失 —— 对话历史、任务进度、所有累积的上下文全部消失。</div>
+        </div>
+        <div class="exp-section">
+          <h3>&#x1f528; 你将构建</h3>
+          <ul class="build-list">
+            <li>SessionStore：消息历史持久化为 JSON</li>
+            <li>恢复机制：无缝加载历史会话</li>
+            <li>回退能力：回滚到更早的对话状态</li>
+            <li>UUID 会话 ID + 文件检查点</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="exp-concepts">
+        <h4>关键概念</h4>
+        <div class="tags">
+          <span class="tag tag-coral">会话快照</span>
+          <span class="tag tag-coral">消息序列化</span>
+          <span class="tag tag-coral">恢复流程</span>
+        </div>
+      </div>
+
+      <div class="exp-result">
+        <span class="check">&#x2714;</span>
+        <p><span class="result-highlight">成果：</span>完整 Mini Harness —— Agent 可恢复中断的工作并回滚错误。</p>
+      </div>
+      <div class="exp-footer">6 / 6</div>
+    </div>
+  </div>
+
+  <!-- ============ Slide 8: 总结 ============ -->
+  <div class="slide" data-title="工作坊总结">
+    <div class="slide-inner">
+      <div class="slide-label">总结</div>
+      <h2>工作坊总结</h2>
+      <p class="lead">从裸模型到生产级 Agent，6 步递进式构建</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:28px;">
+        <div>
+          <div class="flow-steps">
+            <div class="flow-step">
+              <div class="flow-num">1</div>
+              <div class="flow-content">
+                <h4>提示与钩子 —— 行为控制</h4>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-num">2</div>
+              <div class="flow-content">
+                <h4>工具执行 —— 真实操作</h4>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-num">3</div>
+              <div class="flow-content">
+                <h4>安全层 —— 权限与人机协同</h4>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-num">4</div>
+              <div class="flow-content">
+                <h4>上下文与记忆 —— 长会话支持</h4>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-num">5</div>
+              <div class="flow-content">
+                <h4>多 Agent —— 分解与委派</h4>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-num">6</div>
+              <div class="flow-content">
+                <h4>持久化 —— 恢复与回退</h4>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-num">~3 小时</div>
+              <div class="stat-label">总时长</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-num">6 个</div>
+              <div class="stat-label">动手实验</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-num">Python</div>
+              <div class="stat-label">实现语言</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-num">100%</div>
+              <div class="stat-label">实操导向</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="final-quote" style="margin-top:24px;">
+        <p>模型是大脑。<span class="quote-highlight">Harness 是其他一切。</span></p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Nav Bar -->
+<nav class="nav-bar">
+  <div style="display:flex;align-items:center;gap:16px;">
+    <button class="toc-btn" onclick="openTOC()" title="目录">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v1.5H2zm0 4.25h12v1.5H2zm0 4.25h12v1.5H2z"/></svg>
+      目录
+    </button>
+    <span class="slide-counter" id="slideCounter">01 / 09</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <span class="key-hint">&#8592; &#8594; 翻页</span>
+    <div class="nav-buttons">
+      <button id="prevBtn" onclick="prevSlide()" title="上一页">&larr;</button>
+      <button id="nextBtn" onclick="nextSlide()" title="下一页">&rarr;</button>
+    </div>
+  </div>
+</nav>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const total = slides.length;
+let current = 0;
+
+function goToSlide(n, direction) {
+  if (n < 0 || n >= total || n === current) return;
+  const old = slides[current];
+  const next = slides[n];
+  const goingForward = direction !== undefined ? direction === 'forward' : n > current;
+  old.classList.remove('active');
+  next.style.transition = 'none';
+  next.style.transform = goingForward ? 'translateX(60px)' : 'translateX(-60px)';
+  next.style.opacity = '0';
+  void next.offsetWidth;
+  next.style.transition = '';
+  next.style.transform = '';
+  next.style.opacity = '';
+  next.classList.add('active');
+  next.scrollTop = 0;
+  current = n;
+  updateUI();
+}
+
+function nextSlide() { goToSlide(current + 1, 'forward'); }
+function prevSlide() { goToSlide(current - 1, 'backward'); }
+
+function updateUI() {
+  document.getElementById('slideCounter').textContent =
+    String(current + 1).padStart(2, '0') + ' / ' + String(total).padStart(2, '0');
+  document.getElementById('progressBar').style.width =
+    ((current + 1) / total * 100) + '%';
+  document.getElementById('prevBtn').disabled = current === 0;
+  document.getElementById('nextBtn').disabled = current === total - 1;
+  document.querySelectorAll('.toc-list button').forEach((btn, i) => {
+    btn.classList.toggle('current', i === current);
+  });
+}
+
+document.addEventListener('keydown', (e) => {
+  if (document.getElementById('tocOverlay').classList.contains('open')) {
+    if (e.key === 'Escape') closeTOC();
+    return;
+  }
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+    e.preventDefault(); nextSlide();
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    e.preventDefault(); prevSlide();
+  } else if (e.key === 'Escape') { closeTOC(); }
+});
+
+let touchStartX = 0;
+document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+document.addEventListener('touchend', (e) => {
+  const diff = touchStartX - e.changedTouches[0].clientX;
+  if (Math.abs(diff) > 60) { diff > 0 ? nextSlide() : prevSlide(); }
+});
+
+function buildTOC() {
+  const list = document.getElementById('tocList');
+  const sections = [
+    { start: 0, label: '概览' },
+    { start: 2, label: '六个实验' },
+    { start: 8, label: '总结' }
+  ];
+  let sectionIdx = 0;
+  slides.forEach((slide, i) => {
+    if (sectionIdx < sections.length && i === sections[sectionIdx].start) {
+      if (i > 0) {
+        const divider = document.createElement('li');
+        divider.className = 'toc-section';
+        divider.innerHTML = '<div class="toc-section-label">' + sections[sectionIdx].label + '</div>';
+        list.appendChild(divider);
+      }
+      sectionIdx++;
+    }
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.innerHTML = '<span class="toc-num">' + String(i + 1).padStart(2, '0') + '</span>' +
+                    '<span>' + slide.dataset.title + '</span>';
+    btn.onclick = () => { goToSlide(i); closeTOC(); };
+    if (i === current) btn.classList.add('current');
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
+}
+
+function openTOC() { updateUI(); document.getElementById('tocOverlay').classList.add('open'); }
+function closeTOC() { document.getElementById('tocOverlay').classList.remove('open'); }
+
+buildTOC();
+updateUI();
+</script>
+</body>
+</html>

@@ -2,3 +2,4 @@
 .venv/
 claude-code-sourcemap/
 labs/.sessions/
+node_modules/

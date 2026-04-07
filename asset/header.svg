@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" width="1200" height="420">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f1923;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#1a2332;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#162029;stop-opacity:1" />
+    </linearGradient>
+    <!-- Teal glow gradient -->
+    <radialGradient id="glowTeal" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#3ecfb2;stop-opacity:0.15" />
+      <stop offset="100%" style="stop-color:#3ecfb2;stop-opacity:0" />
+    </radialGradient>
+    <!-- Layer box gradient -->
+    <linearGradient id="layerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3ecfb2;stop-opacity:0.25" />
+      <stop offset="100%" style="stop-color:#3ecfb2;stop-opacity:0.05" />
+    </linearGradient>
+    <!-- Connector line gradient -->
+    <linearGradient id="connGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3ecfb2;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#3ecfb2;stop-opacity:0.2" />
+    </linearGradient>
+    <!-- Pulse animation -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="420" fill="url(#bgGrad)" />
+
+  <!-- Decorative circles (matching slide style) -->
+  <circle cx="1100" cy="80" r="180" fill="none" stroke="#3ecfb2" stroke-opacity="0.08" stroke-width="1.5" />
+  <circle cx="1100" cy="80" r="130" fill="none" stroke="#3ecfb2" stroke-opacity="0.05" stroke-width="1" />
+  <circle cx="1050" cy="120" r="220" fill="none" stroke="#3ecfb2" stroke-opacity="0.04" stroke-width="1" />
+  <circle cx="-50" cy="380" r="150" fill="none" stroke="#3ecfb2" stroke-opacity="0.06" stroke-width="1" />
+  <circle cx="-50" cy="380" r="200" fill="none" stroke="#3ecfb2" stroke-opacity="0.03" stroke-width="1" />
+
+  <!-- Ambient glow spots -->
+  <ellipse cx="1000" cy="100" rx="250" ry="200" fill="url(#glowTeal)" />
+  <ellipse cx="200" cy="350" rx="200" ry="150" fill="url(#glowTeal)" opacity="0.5" />
+
+  <!-- Grid pattern (subtle tech feel) -->
+  <g opacity="0.03" stroke="#3ecfb2" stroke-width="0.5">
+    <line x1="0" y1="70" x2="1200" y2="70" />
+    <line x1="0" y1="140" x2="1200" y2="140" />
+    <line x1="0" y1="210" x2="1200" y2="210" />
+    <line x1="0" y1="280" x2="1200" y2="280" />
+    <line x1="0" y1="350" x2="1200" y2="350" />
+  </g>
+
+  <!-- Left accent bar (matching slide style) -->
+  <rect x="60" y="80" width="4" height="160" rx="2" fill="#3ecfb2" />
+
+  <!-- Title -->
+  <text x="82" y="142" font-family="'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif" font-size="56" font-weight="700" fill="#ffffff" letter-spacing="-1">Agent Harness</text>
+  <text x="82" y="208" font-family="'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif" font-size="48" font-weight="700" fill="#ffffff" letter-spacing="-0.5">Workshop</text>
+
+  <!-- Subtitle -->
+  <text x="84" y="258" font-family="'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif" font-size="18" fill="#3ecfb2" letter-spacing="0.5" opacity="0.9">Build a Mini Agent Harness from Scratch</text>
+  <text x="84" y="284" font-family="'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif" font-size="15" fill="#8899aa" letter-spacing="0.3">6 Labs  |  Hands-on  |  ~3 Hours</text>
+
+  <!-- Core insight badge -->
+  <rect x="76" y="308" width="380" height="42" rx="6" fill="#1e2d3d" stroke="#3ecfb2" stroke-opacity="0.2" stroke-width="1" />
+  <text x="96" y="335" font-family="'SF Mono', 'Fira Code', 'Consolas', monospace" font-size="14" fill="#8899aa">Agent</text>
+  <text x="148" y="335" font-family="'SF Mono', 'Fira Code', 'Consolas', monospace" font-size="14" fill="#3ecfb2" font-weight="600">=</text>
+  <text x="168" y="335" font-family="'SF Mono', 'Fira Code', 'Consolas', monospace" font-size="14" fill="#3ecfb2" font-weight="600">Model</text>
+  <text x="230" y="335" font-family="'SF Mono', 'Fira Code', 'Consolas', monospace" font-size="14" fill="#8899aa">+</text>
+  <text x="250" y="335" font-family="'SF Mono', 'Fira Code', 'Consolas', monospace" font-size="14" fill="#ffffff" font-weight="700">Harness</text>
+
+  <!-- Right side: 6-layer stack visualization -->
+  <!-- Vertical connector line -->
+  <line x1="780" y1="68" x2="780" y2="372" stroke="url(#connGrad)" stroke-width="2" stroke-dasharray="4,4" />
+
+  <!-- Layer 6 -->
+  <g transform="translate(660, 50)">
+    <rect x="0" y="0" width="240" height="42" rx="8" fill="url(#layerGrad)" stroke="#3ecfb2" stroke-opacity="0.3" stroke-width="1" />
+    <circle cx="120" cy="21" r="3" fill="#3ecfb2" filter="url(#glow)" />
+    <text x="16" y="26" font-family="'SF Mono', 'Fira Code', 'Consolas', monospace" font-size="11" fill="#3ecfb2" opacity="0.7">06</text>
+    <text x="42" y="26" font-family="'Segoe UI', -apple-system, sans-serif" font-size="13" fill="#c8d6e5" font-weight="500">State &amp; Persistence</text>
+  </g>
+
+  <!-- Layer 5 -->
+  <g transform="translate(660, 102)">
+    <rect x="0" y="0" width="240" height="42" rx="8" fill="url(#layerGrad)" stroke="#3ecfb2" stroke-opacity="0.3" stroke-width="1" />
+    <circle cx="120" cy="21" r="3" fill="#3ecfb2" filter="url(#glow)" />
+    <text x="16" y="26" font-family="'SF Mono', 'Fira Code', 'Consolas', monospace" font-size="11" fill="#3ecfb2" opacity="0.7">05</text>
+    <text x="42" y="26" font-family="'Segoe UI', -apple-system, sans-serif" font-size="13" fill="#c8d6e5" font-weight="500">Planning &amp; Coordination</text>
+  </g>
+
+  <!-- Layer 4 -->
+  <g transform="translate(660, 154)">
+    <rect x="0" y="0" width="240" height="42" rx="8" fill="url(#layerGrad)" stroke="#3ecfb2" stroke-opacity="0.3" stroke-width="1" />
+    <circle cx="120" cy="21" r="3" fill="#3ecfb2" filter="url(#glow)" />
+    <text x="16" y="26" font-family="'SF Mono', 'Fira Code', 'Consolas', monospace" font-size="11" fill="#3ecfb2" opacity="0.7">04</text>
+    <text x="42" y="26" font-family="'Segoe UI', -apple-system, sans-serif" font-size="13" fill="#c8d6e5" font-weight="500">Context &amp; Memory</text>
+  </g>
+
+  <!-- Layer 3 -->
+  <g transform="translate(660, 206)">
+    <rect x="0" y="0" width="240" height="42" rx="8" fill="url(#layerGrad)" stroke="#3ecfb2" stroke-opacity="0.3" stroke-width="1" />
+    <circle cx="120" cy="21" r="3" fill="#3ecfb2" filter="url(#glow)" />
+    <text x="16" y="26" font-family="'SF Mono', 'Fira Code', 'Consolas', monospace" font-size="11" fill="#3ecfb2" opacity="0.7">03</text>
+    <text x="42" y="26" font-family="'Segoe UI', -apple-system, sans-serif" font-size="13" fill="#c8d6e5" font-weight="500">Safety &amp; Validation</text>
+  </g>
+
+  <!-- Layer 2 -->
+  <g transform="translate(660, 258)">
+    <rect x="0" y="0" width="240" height="42" rx="8" fill="url(#layerGrad)" stroke="#3ecfb2" stroke-opacity="0.3" stroke-width="1" />
+    <circle cx="120" cy="21" r="3" fill="#3ecfb2" filter="url(#glow)" />
+    <text x="16" y="26" font-family="'SF Mono', 'Fira Code', 'Consolas', monospace" font-size="11" fill="#3ecfb2" opacity="0.7">02</text>
+    <text x="42" y="26" font-family="'Segoe UI', -apple-system, sans-serif" font-size="13" fill="#c8d6e5" font-weight="500">Tools &amp; Execution</text>
+  </g>
+
+  <!-- Layer 1 -->
+  <g transform="translate(660, 310)">
+    <rect x="0" y="0" width="240" height="42" rx="8" fill="url(#layerGrad)" stroke="#3ecfb2" stroke-opacity="0.3" stroke-width="1" />
+    <circle cx="120" cy="21" r="3" fill="#3ecfb2" filter="url(#glow)" />
+    <text x="16" y="26" font-family="'SF Mono', 'Fira Code', 'Consolas', monospace" font-size="11" fill="#3ecfb2" opacity="0.7">01</text>
+    <text x="42" y="26" font-family="'Segoe UI', -apple-system, sans-serif" font-size="13" fill="#c8d6e5" font-weight="500">Prompt &amp; Guidance</text>
+  </g>
+
+  <!-- Connecting dots on the vertical line -->
+  <circle cx="780" cy="71" r="4" fill="#3ecfb2" opacity="0.6" />
+  <circle cx="780" cy="123" r="4" fill="#3ecfb2" opacity="0.6" />
+  <circle cx="780" cy="175" r="4" fill="#3ecfb2" opacity="0.6" />
+  <circle cx="780" cy="227" r="4" fill="#3ecfb2" opacity="0.6" />
+  <circle cx="780" cy="279" r="4" fill="#3ecfb2" opacity="0.6" />
+  <circle cx="780" cy="331" r="4" fill="#3ecfb2" opacity="0.6" />
+
+  <!-- Right side label -->
+  <text x="940" y="395" font-family="'Segoe UI', -apple-system, sans-serif" font-size="11" fill="#3ecfb2" opacity="0.4" text-anchor="end" letter-spacing="2">HARNESS ARCHITECTURE</text>
+
+  <!-- Bottom separator line -->
+  <line x1="60" y1="400" x2="1140" y2="400" stroke="#3ecfb2" stroke-opacity="0.15" stroke-width="1" />
+
+  <!-- Floating particle dots for depth -->
+  <circle cx="550" cy="90" r="1.5" fill="#3ecfb2" opacity="0.3" />
+  <circle cx="590" cy="200" r="1" fill="#3ecfb2" opacity="0.2" />
+  <circle cx="520" cy="310" r="1.5" fill="#3ecfb2" opacity="0.25" />
+  <circle cx="610" cy="150" r="1" fill="#3ecfb2" opacity="0.15" />
+  <circle cx="480" cy="250" r="1.2" fill="#3ecfb2" opacity="0.2" />
+  <circle cx="1100" cy="350" r="1.5" fill="#3ecfb2" opacity="0.2" />
+  <circle cx="1050" cy="280" r="1" fill="#3ecfb2" opacity="0.15" />
+</svg>
