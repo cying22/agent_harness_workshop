@@ -3,3 +3,6 @@
 claude-code-sourcemap/
 labs/.sessions/
 node_modules/
+labs/snake_game/
+labs/gomoku/
+__pycache__/

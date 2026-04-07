@@ -44,12 +44,17 @@ class PermissionRule:
 class SmartPermissionChecker:
     """权限检查器，对 bash 命令使用分类器。"""
 
-    def __init__(self):
+    def __init__(self,rules=[]):
         self.rules = [
             PermissionRule("read_file", "allow"),
             PermissionRule("write_file", "ask"),
             PermissionRule("bash", "ask"),
-        ]
+            PermissionRule('dispatch_agent','allow'),
+            PermissionRule('create_task','allow'),
+            PermissionRule('update_task','allow'),
+            PermissionRule('list_tasks','allow'),
+            PermissionRule('send_message','allow')
+        ]+rules
 
     def check(self, tool_name: str, tool_input: dict) -> str:
         if tool_name == "bash":
