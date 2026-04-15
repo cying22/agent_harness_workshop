@@ -119,6 +119,46 @@ def _normalize_windows_tokens(tokens: list[str]) -> list[str]:
     return normalized
 
 
+def _extract_cwd_prefix(command: str) -> tuple[Path | None, str]:
+    match = re.match(
+        r"^\s*cd(?:\s+/d)?\s+(?P<path>\"[^\"]+\"|'[^']+'|[^;&]+?)\s*(?:&&|;)\s*(?P<rest>.+)$",
+        command,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not match:
+        return None, command
+
+    raw_path = match.group("path").strip()
+    if len(raw_path) >= 2 and raw_path[0] == raw_path[-1] and raw_path[0] in {'"', "'"}:
+        raw_path = raw_path[1:-1]
+
+    try:
+        cwd = _resolve_local_path(raw_path)
+    except Exception:
+        return None, command
+    return cwd, match.group("rest").strip()
+
+
+def _translate_windows_remove(tokens: list[str], *, head: str) -> str | None:
+    if head not in {"rm", "del", "erase", "remove-item", "rmdir", "rd"}:
+        return None
+
+    flags = [token.lower() for token in tokens[1:] if token.startswith(("-", "/"))]
+    targets = [token for token in tokens[1:] if not token.startswith(("-", "/"))]
+    if not targets:
+        return None
+
+    recurse = False
+    if head == "rm":
+        recurse = any("r" in flag for flag in flags)
+    elif head in {"rmdir", "rd"}:
+        recurse = any(flag in {"/s", "-r", "-rf", "-fr"} or "r" in flag for flag in flags)
+
+    target_list = ", ".join(_powershell_quote(target) for target in targets)
+    recurse_flag = " -Recurse" if recurse else ""
+    return f"Remove-Item -LiteralPath @({target_list}) -Force{recurse_flag}"
+
+
 def _translate_windows_command(command: str) -> str:
     tokens = _split_simple_command(command)
     if not tokens:
@@ -126,6 +166,10 @@ def _translate_windows_command(command: str) -> str:
 
     tokens = _normalize_windows_tokens(tokens)
     head = tokens[0].lower()
+
+    remove_command = _translate_windows_remove(tokens, head=head)
+    if remove_command is not None:
+        return remove_command
 
     if head == "pwd" and len(tokens) == 1:
         return "(Get-Location).Path"
@@ -172,10 +216,6 @@ def _translate_windows_command(command: str) -> str:
             "{ $cmd = Get-Command $name -ErrorAction SilentlyContinue; "
             "if ($cmd) { $cmd.Source } else { Write-Output ($name + ' not found') } }"
         )
-
-    if head == "rm" and len(tokens) >= 3 and tokens[1] in {"-f", "-rf", "-fr"}:
-        recurse = " -Recurse" if "r" in tokens[1] else ""
-        return f"Remove-Item -LiteralPath {_powershell_quote(tokens[2])} -Force{recurse}"
 
     return " ".join(_powershell_token(token) for token in tokens)
 
@@ -247,11 +287,12 @@ def _has_working_windows_bash() -> bool:
 
 
 def _run_shell(command: str) -> subprocess.CompletedProcess[str]:
+    extracted_cwd, command = _extract_cwd_prefix(command)
     common_kwargs = {
         "capture_output": True,
         "text": True,
         "timeout": 30,
-        "cwd": str(_workspace_root()),
+        "cwd": str(extracted_cwd or _workspace_root()),
         "encoding": "utf-8",
         "errors": "replace",
     }
