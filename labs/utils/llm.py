@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Iterable
@@ -11,6 +12,7 @@ DEFAULT_OPENAI_MODEL = "gpt-5.4"
 DEFAULT_DEEPSEEK_MODEL = "deepseek-reasoner"
 DEFAULT_DEEPSEEK_TOOL_MODEL = "deepseek-chat"
 DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+DEFAULT_DEEPSEEK_MAX_TOKENS = 8192
 
 
 def _env_first(*names: str) -> str | None:
@@ -161,6 +163,11 @@ class _MessagesAPI:
             request_model = self._parent.tool_model_name or request_model
 
         request_kwargs = _normalize_chat_completion_kwargs(kwargs)
+        request_max_tokens = _normalize_max_tokens(
+            max_tokens,
+            provider=self._parent.provider,
+            model=request_model,
+        )
         request = {
             "model": request_model,
             "messages": _to_openai_messages(system=system, messages=messages or []),
@@ -169,19 +176,28 @@ class _MessagesAPI:
         if openai_tools:
             request["tools"] = openai_tools
             request["tool_choice"] = "auto"
-        if max_tokens is not None:
-            request["max_tokens"] = max_tokens
+        if request_max_tokens is not None:
+            request["max_tokens"] = request_max_tokens
 
         chat = self._parent._raw_client.chat.completions
         try:
             raw_response = chat.create(**request)
         except Exception as exc:
-            if max_tokens is None or not _should_retry_with_max_completion_tokens(exc):
+            token_limit = _extract_max_tokens_upper_bound(exc)
+            if request_max_tokens is not None and token_limit is not None and token_limit < request_max_tokens:
+                retry_request = dict(request)
+                retry_request["max_tokens"] = token_limit
+                raw_response = chat.create(**retry_request)
+            elif request_max_tokens is None or not _should_retry_with_max_completion_tokens(exc):
                 raise
-            retry_request = dict(request)
-            retry_request.pop("max_tokens", None)
-            retry_request["max_completion_tokens"] = max_tokens
-            raw_response = chat.create(**retry_request)
+            else:
+                retry_request = dict(request)
+                retry_request.pop("max_tokens", None)
+                retry_tokens = request_max_tokens
+                if token_limit is not None:
+                    retry_tokens = min(retry_tokens, token_limit)
+                retry_request["max_completion_tokens"] = retry_tokens
+                raw_response = chat.create(**retry_request)
 
         return _from_openai_response(raw_response)
 
@@ -213,6 +229,41 @@ class _CompatStream:
 def _should_retry_with_max_completion_tokens(exc: Exception) -> bool:
     message = str(exc).lower()
     return "max_tokens" in message and "max_completion_tokens" in message
+
+
+def _normalize_max_tokens(
+    max_tokens: int | None,
+    *,
+    provider: str,
+    model: str,
+) -> int | None:
+    if max_tokens is None:
+        return None
+
+    normalized = max(1, int(max_tokens))
+    known_limit = _known_max_tokens_limit(provider=provider, model=model)
+    if known_limit is None:
+        return normalized
+    return min(normalized, known_limit)
+
+
+def _known_max_tokens_limit(*, provider: str, model: str) -> int | None:
+    if provider == "deepseek" or model.startswith("deepseek-"):
+        return DEFAULT_DEEPSEEK_MAX_TOKENS
+    return None
+
+
+def _extract_max_tokens_upper_bound(exc: Exception) -> int | None:
+    message = str(exc)
+    patterns = (
+        r"valid range of max_tokens is \[\s*\d+\s*,\s*(\d+)\s*\]",
+        r"max_tokens[^0-9]+(?:from\s+\d+\s+to|between)\s+\d+\s+(?:and|to)\s+(\d+)",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, message, flags=re.IGNORECASE)
+        if match:
+            return int(match.group(1))
+    return None
 
 
 def _normalize_chat_completion_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
