@@ -43,16 +43,16 @@ echo "→ 验证安装..."
 "$VENV_DIR/bin/python" -c "import openai; print(f'  ✓ openai {openai.__version__}')"
 "$VENV_DIR/bin/python" -c "import jupyter; print(f'  ✓ jupyter 已安装')"
 
-# 检查 OpenAI API key
+# 检查 DeepSeek API key
 echo ""
-echo "→ 检查 OPENAI_API_KEY..."
-if [ -n "${OPENAI_API_KEY:-}" ]; then
-    echo "  ✓ 已检测到 OPENAI_API_KEY"
-    echo "  ✓ 当前模型: ${OPENAI_MODEL:-gpt-5.4}"
+echo "→ 检查 DEEPSEEK_API_KEY..."
+if [ -n "${DEEPSEEK_API_KEY:-}" ]; then
+    echo "  ✓ 已检测到 DEEPSEEK_API_KEY"
+    echo "  ✓ 当前模型: ${DEEPSEEK_MODEL:-deepseek-reasoner}"
 else
-    echo "  ⚠️  未检测到 OPENAI_API_KEY"
-    echo "  请设置环境变量: OPENAI_API_KEY"
-    echo "  可选: OPENAI_MODEL（默认 gpt-5.4）"
+    echo "  ⚠️  未检测到 DEEPSEEK_API_KEY"
+    echo "  请设置环境变量: DEEPSEEK_API_KEY"
+    echo "  可选: DEEPSEEK_MODEL（默认 deepseek-reasoner）"
 fi
 
 echo ""

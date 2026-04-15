@@ -8,6 +8,9 @@ from typing import Any, Iterable
 
 
 DEFAULT_OPENAI_MODEL = "gpt-5.4"
+DEFAULT_DEEPSEEK_MODEL = "deepseek-reasoner"
+DEFAULT_DEEPSEEK_TOOL_MODEL = "deepseek-chat"
+DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 
 
 @dataclass
@@ -31,8 +34,39 @@ class CompatMessage:
     model: str | None = None
 
 
-def default_model(fallback: str = DEFAULT_OPENAI_MODEL) -> str:
-    return os.getenv("OPENAI_MODEL", fallback)
+def default_provider(
+    *,
+    provider: str | None = None,
+    model: str | None = None,
+    base_url: str | None = None,
+) -> str:
+    explicit = provider or os.getenv("LLM_PROVIDER")
+    if explicit:
+        return explicit.lower()
+    if base_url and "deepseek" in base_url.lower():
+        return "deepseek"
+    if model and model.startswith("deepseek-"):
+        return "deepseek"
+    if os.getenv("DEEPSEEK_API_KEY"):
+        return "deepseek"
+    return "openai"
+
+
+def default_model(
+    fallback: str | None = None,
+    *,
+    provider: str | None = None,
+) -> str:
+    resolved_provider = default_provider(provider=provider, model=fallback)
+    if resolved_provider == "deepseek":
+        deepseek_fallback = (
+            fallback if fallback and fallback.startswith("deepseek-") else DEFAULT_DEEPSEEK_MODEL
+        )
+        return os.getenv("DEEPSEEK_MODEL", deepseek_fallback)
+    openai_fallback = (
+        fallback if fallback and not fallback.startswith("deepseek-") else DEFAULT_OPENAI_MODEL
+    )
+    return os.getenv("OPENAI_MODEL", openai_fallback)
 
 
 def create_harness_client(
@@ -40,6 +74,7 @@ def create_harness_client(
     model: str | None = None,
     api_key: str | None = None,
     base_url: str | None = None,
+    provider: str | None = None,
 ):
     try:
         from openai import OpenAI
@@ -48,18 +83,46 @@ def create_harness_client(
             "Missing dependency 'openai'. Install it with `pip install openai`."
         ) from exc
 
-    resolved_model = model or default_model()
+    resolved_provider = default_provider(provider=provider, model=model, base_url=base_url)
+    resolved_model = model or default_model(provider=resolved_provider)
+    if resolved_provider == "deepseek":
+        resolved_api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
+        resolved_base_url = base_url or os.getenv("DEEPSEEK_BASE_URL", DEFAULT_DEEPSEEK_BASE_URL)
+        tool_model_name = os.getenv("DEEPSEEK_TOOL_MODEL", DEFAULT_DEEPSEEK_TOOL_MODEL)
+    else:
+        resolved_api_key = api_key or os.getenv("OPENAI_API_KEY")
+        resolved_base_url = base_url or os.getenv("OPENAI_BASE_URL")
+        tool_model_name = None
+
+    if not resolved_api_key:
+        expected_var = "DEEPSEEK_API_KEY" if resolved_provider == "deepseek" else "OPENAI_API_KEY"
+        raise RuntimeError(f"Missing API key. Set `{expected_var}` or pass api_key explicitly.")
+
     raw_client = OpenAI(
-        api_key=api_key or os.getenv("OPENAI_API_KEY"),
-        base_url=base_url or os.getenv("OPENAI_BASE_URL"),
+        api_key=resolved_api_key,
+        base_url=resolved_base_url,
     )
-    return OpenAIHarnessClient(raw_client, default_model_name=resolved_model)
+    return OpenAIHarnessClient(
+        raw_client,
+        default_model_name=resolved_model,
+        provider=resolved_provider,
+        tool_model_name=tool_model_name,
+    )
 
 
 class OpenAIHarnessClient:
-    def __init__(self, raw_client: Any, *, default_model_name: str):
+    def __init__(
+        self,
+        raw_client: Any,
+        *,
+        default_model_name: str,
+        provider: str = "openai",
+        tool_model_name: str | None = None,
+    ):
         self._raw_client = raw_client
         self.default_model_name = default_model_name
+        self.provider = provider
+        self.tool_model_name = tool_model_name
         self.messages = _MessagesAPI(self)
 
 
@@ -77,13 +140,19 @@ class _MessagesAPI:
         messages: list[dict[str, Any]] | None = None,
         **kwargs: Any,
     ) -> CompatMessage:
+        openai_tools = _to_openai_tools(tools or [])
+        request_model = model or self._parent.default_model_name
+        if openai_tools and _requires_tool_model_fallback(
+            provider=self._parent.provider,
+            model=request_model,
+        ):
+            request_model = self._parent.tool_model_name or request_model
+
         request = {
-            "model": model or self._parent.default_model_name,
+            "model": request_model,
             "messages": _to_openai_messages(system=system, messages=messages or []),
             **kwargs,
         }
-
-        openai_tools = _to_openai_tools(tools or [])
         if openai_tools:
             request["tools"] = openai_tools
             request["tool_choice"] = "auto"
@@ -131,6 +200,10 @@ class _CompatStream:
 def _should_retry_with_max_completion_tokens(exc: Exception) -> bool:
     message = str(exc).lower()
     return "max_tokens" in message and "max_completion_tokens" in message
+
+
+def _requires_tool_model_fallback(*, provider: str, model: str) -> bool:
+    return provider == "deepseek" and model == DEFAULT_DEEPSEEK_MODEL
 
 
 def _to_openai_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
