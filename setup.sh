@@ -48,11 +48,11 @@ echo ""
 echo "→ 检查 OPENAI_API_KEY..."
 if [ -n "${OPENAI_API_KEY:-}" ]; then
     echo "  ✓ 已检测到 OPENAI_API_KEY"
-    echo "  ✓ 当前模型: ${OPENAI_MODEL:-gpt-4.1}"
+    echo "  ✓ 当前模型: ${OPENAI_MODEL:-gpt-5.4}"
 else
     echo "  ⚠️  未检测到 OPENAI_API_KEY"
     echo "  请设置环境变量: OPENAI_API_KEY"
-    echo "  可选: OPENAI_MODEL（默认 gpt-4.1）"
+    echo "  可选: OPENAI_MODEL（默认 gpt-5.4）"
 fi
 
 echo ""

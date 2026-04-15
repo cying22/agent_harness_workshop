@@ -171,8 +171,8 @@ pip install -r requirements.txt   # openai + jupyter
 # 配置 OpenAI API Key
 export OPENAI_API_KEY="your-openai-api-key"
 
-# 可选：指定模型（默认 gpt-4.1）
-export OPENAI_MODEL="gpt-4.1"
+# 可选：指定模型（默认 gpt-5.4）
+export OPENAI_MODEL="gpt-5.4"
 ```
 
 ### 运行
