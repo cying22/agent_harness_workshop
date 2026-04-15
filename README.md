@@ -6,7 +6,7 @@
   </p>
   <p>
     <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+"/>
-    <img src="https://img.shields.io/badge/Amazon_Bedrock-Claude-FF9900?style=flat-square&logo=amazonaws&logoColor=white" alt="Amazon Bedrock"/>
+    <img src="https://img.shields.io/badge/OpenAI-GPT--4.1-412991?style=flat-square&logo=openai&logoColor=white" alt="OpenAI"/>
     <img src="https://img.shields.io/badge/Labs-6_Modules-3ecfb2?style=flat-square" alt="6 Labs"/>
     <img src="https://img.shields.io/badge/Duration-~3_Hours-8899aa?style=flat-square" alt="~3 Hours"/>
   </p>
@@ -159,18 +159,40 @@ Lab 6: ❻ 状态与持久层  → 完整 Mini Harness ✅
 ### 环境要求
 
 - Python 3.11+
-- AWS 账户（用于 Amazon Bedrock）
+- DeepSeek API Key
 - Jupyter Notebook
 
 ### 安装
 
+#### macOS / Linux
+
 ```bash
 cd labs/
-pip install -r requirements.txt   # anthropic[bedrock] + jupyter
+pip install -r requirements.txt   # openai + jupyter
 
-# 配置 AWS credentials（用于调用 Bedrock 上的 Claude）
-aws configure
+# 配置 DeepSeek API Key
+export DEEPSEEK_API_KEY="your-deepseek-api-key"
+
+# 可选：指定模型（默认 deepseek-reasoner）
+export DEEPSEEK_MODEL="deepseek-reasoner"
 ```
+
+#### Windows CMD + Conda
+
+```cmd
+cd /d D:\agent_harness_workshop\labs
+conda create -n agent-harness python=3.11 -y
+conda activate agent-harness
+pip install -r requirements.txt
+python -m ipykernel install --user --name agent-harness --display-name "Agent Harness Workshop"
+
+set DEEPSEEK_API_KEY=your-deepseek-api-key
+set DEEPSEEK_MODEL=deepseek-reasoner
+```
+
+> 优先使用 `DEEPSEEK_API_KEY`；当前代码也兼容 `DEEPSEEK_APIKEY`。
+>
+> 使用 DeepSeek 时，`deepseek-reasoner` 负责普通推理；从 Lab 2 开始，带工具调用的请求会自动切换到 `deepseek-chat`，因为 DeepSeek 官方当前将 Function Calling 示例和能力说明放在 `deepseek-chat` 上。
 
 ### 运行
 

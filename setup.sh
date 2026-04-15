@@ -28,7 +28,7 @@ uv venv "$VENV_DIR" --python 3.12
 echo ""
 echo "→ 安装依赖包..."
 uv pip install --python "$VENV_DIR/bin/python" \
-    "anthropic[bedrock]" \
+    openai \
     jupyter \
     ipykernel
 
@@ -40,23 +40,19 @@ echo "→ 注册 Jupyter kernel..."
 # 验证安装
 echo ""
 echo "→ 验证安装..."
-"$VENV_DIR/bin/python" -c "import anthropic; print(f'  ✓ anthropic {anthropic.__version__}')"
+"$VENV_DIR/bin/python" -c "import openai; print(f'  ✓ openai {openai.__version__}')"
 "$VENV_DIR/bin/python" -c "import jupyter; print(f'  ✓ jupyter 已安装')"
 
-# 检查 AWS credentials
+# 检查 DeepSeek API key
 echo ""
-echo "→ 检查 AWS credentials..."
-if "$VENV_DIR/bin/python" -c "
-import boto3
-sts = boto3.client('sts')
-identity = sts.get_caller_identity()
-print(f'  ✓ AWS Account: {identity[\"Account\"]}')
-" 2>/dev/null; then
-    :
+echo "→ 检查 DEEPSEEK_API_KEY / DEEPSEEK_APIKEY..."
+if [ -n "${DEEPSEEK_API_KEY:-${DEEPSEEK_APIKEY:-}}" ]; then
+    echo "  ✓ 已检测到 DeepSeek API key"
+    echo "  ✓ 当前模型: ${DEEPSEEK_MODEL:-deepseek-reasoner}"
 else
-    echo "  ⚠️  未检测到 AWS credentials"
-    echo "  请运行: aws configure"
-    echo "  或设置环境变量: AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY"
+    echo "  ⚠️  未检测到 DEEPSEEK_API_KEY / DEEPSEEK_APIKEY"
+    echo "  请设置环境变量: DEEPSEEK_API_KEY（兼容 DEEPSEEK_APIKEY）"
+    echo "  可选: DEEPSEEK_MODEL（默认 deepseek-reasoner）"
 fi
 
 echo ""
