@@ -3,8 +3,10 @@ from typing import Literal
 
 DANGEROUS_PATTERNS = [
     "rm ", "rm\t", "rmdir",
+    "del ", "erase ", "remove-item", "rd /s", "rmdir /s",
     "sudo ",
     "chmod ", "chown ",
+    "format ", "format-volume", "reg delete ",
     "> /dev/", "mkfs",
     "curl | sh", "wget | sh",
     "dd if=",
@@ -13,12 +15,13 @@ DANGEROUS_PATTERNS = [
 
 SAFE_PATTERNS = [
     "ls", "cat ", "head ", "tail ",
+    "dir", "get-childitem", "get-location", "get-content", "select-string",
     "echo ", "pwd", "whoami", "date",
-    "python ", "python3 ", "node ",
+    "python ", "python3 ", "py ", "node ",
     "pip list", "pip show",
     "git status", "git log", "git diff", "git branch",
     "wc ", "sort ", "grep ", "find ",
-    "which ", "type ", "file ",
+    "which ", "where ", "get-command", "type ", "file ",
 ]
 
 
