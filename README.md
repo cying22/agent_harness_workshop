@@ -193,6 +193,10 @@ set DEEPSEEK_MODEL=deepseek-reasoner
 > 优先使用 `DEEPSEEK_API_KEY`；当前代码也兼容 `DEEPSEEK_APIKEY`。
 >
 > 使用 DeepSeek 时，`deepseek-reasoner` 负责普通推理；从 Lab 2 开始，带工具调用的请求会自动切换到 `deepseek-chat`，因为 DeepSeek 官方当前将 Function Calling 示例和能力说明放在 `deepseek-chat` 上。
+>
+> 不建议使用 DeepSeek 完成 Lab 5 和 Lab 6。这两个实验包含更长的上下文、更频繁的工具调用和多轮协调，整体效率会明显偏低，更适合使用更强的 LLM，例如 `gpt-5.4`。
+>
+> 本仓库一次完整实践中，使用 DeepSeek 跑完 `lab1 ~ lab6` 总计约消耗 `3.4M tokens`。
 
 ### 运行
 
