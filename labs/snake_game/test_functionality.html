@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇游戏功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .pass {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .fail {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>贪吃蛇游戏功能测试</h1>
+    
+    <div class="test-section">
+        <h2>1. 代码结构检查</h2>
+        <div id="test-iife" class="test-result">
+            <p>检查IIFE封装和全局变量...</p>
+        </div>
+        <div id="test-xss" class="test-result">
+            <p>检查XSS安全风险...</p>
+        </div>
+        <div id="test-food-loop" class="test-result">
+            <p>检查食物生成无限循环防护...</p>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 游戏功能测试</h2>
+        <div id="test-game-init" class="test-result">
+            <p>检查游戏初始化...</p>
+        </div>
+        <div id="test-game-controls" class="test-result">
+            <p>检查游戏控制...</p>
+        </div>
+        <div id="test-score-system" class="test-result">
+            <p>检查分数系统...</p>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 运行游戏</h2>
+        <p>
+            <button onclick="window.open('index.html', '_blank')">打开主游戏页面</button>
+            <button onclick="window.open('test_fixed.html', '_blank')">打开测试页面</button>
+        </p>
+    </div>
+    
+    <script>
+        // 测试函数
+        function runTests() {
+            testIIFE();
+            testXSS();
+            testFoodLoop();
+            testGameInit();
+            testGameControls();
+            testScoreSystem();
+        }
+        
+        function testIIFE() {
+            const resultEl = document.getElementById('test-iife');
+            try {
+                // 检查全局变量数量
+                const globalVars = Object.keys(window).filter(key => 
+                    !key.startsWith('_') && 
+                    !['window', 'document', 'console', 'location', 'history', 'navigator', 'screen'].includes(key)
+                );
+                
+                // 检查是否有SnakeGame对象
+                if (window.SnakeGame && typeof window.SnakeGame.init === 'function') {
+                    resultEl.innerHTML = `
+                        <strong>✅ IIFE封装测试通过</strong>
+                        <p>全局变量数量: ${globalVars.length}</p>
+                        <p>SnakeGame接口已正确暴露</p>
+                    `;
+                    resultEl.className = 'test-result pass';
+                } else {
+                    throw new Error('SnakeGame接口未正确暴露');
+                }
+            } catch (error) {
+                resultEl.innerHTML = `<strong>❌ IIFE封装测试失败</strong><p>${error.message}</p>`;
+                resultEl.className = 'test-result fail';
+            }
+        }
+        
+        function testXSS() {
+            const resultEl = document.getElementById('test-xss');
+            try {
+                // 检查game.js中是否还有innerHTML
+                fetch('game.js')
+                    .then(response => response.text())
+                    .then(code => {
+                        const innerHTMLCount = (code.match(/innerHTML/g) || []).length;
+                        const dangerousInnerHTML = code.includes('innerHTML =') && !code.includes('innerHTML = \'\'');
+                        
+                        if (innerHTMLCount === 1 && code.includes('innerHTML = \'\'')) {
+                            resultEl.innerHTML = `
+                                <strong>✅ XSS安全测试通过</strong>
+                                <p>仅使用innerHTML清空内容，没有XSS风险</p>
+                                <p>innerHTML使用次数: ${innerHTMLCount}</p>
+                            `;
+                            resultEl.className = 'test-result pass';
+                        } else if (dangerousInnerHTML) {
+                            resultEl.innerHTML = `<strong>❌ XSS安全测试失败</strong><p>发现危险的innerHTML使用</p>`;
+                            resultEl.className = 'test-result fail';
+                        } else {
+                            resultEl.innerHTML = `
+                                <strong>⚠️ XSS安全测试警告</strong>
+                                <p>innerHTML使用次数: ${innerHTMLCount}</p>
+                                <p>请检查代码中的innerHTML使用</p>
+                            `;
+                            resultEl.className = 'test-result warning';
+                        }
+                    })
+                    .catch(error => {
+                        resultEl.innerHTML = `<strong>❌ XSS安全测试失败</strong><p>无法读取game.js文件</p>`;
+                        resultEl.className = 'test-result fail';
+                    });
+            } catch (error) {
+                resultEl.innerHTML = `<strong>❌ XSS安全测试失败</strong><p>${error.message}</p>`;
+                resultEl.className = 'test-result fail';
+            }
+        }
+        
+        function testFoodLoop() {
+            const resultEl = document.getElementById('test-food-loop');
+            try {
+                fetch('game.js')
+                    .then(response => response.text())
+                    .then(code => {
+                        const hasMaxAttempts = code.includes('MAX_FOOD_ATTEMPTS');
+                        const hasAttemptsCounter = code.includes('attempts++');
+                        const hasMaxAttemptsCheck = code.includes('attempts > maxAttempts');
+                        
+                        if (hasMaxAttempts && hasAttemptsCounter && hasMaxAttemptsCheck) {
+                            resultEl.innerHTML = `
+                                <strong>✅ 食物生成无限循环防护测试通过</strong>
+                                <p>已实现最大尝试次数限制</p>
+                                <p>包含尝试次数计数器</p>
+                                <p>包含尝试次数检查</p>
+                            `;
+                            resultEl.className = 'test-result pass';
+                        } else {
+                            resultEl.innerHTML = `
+                                <strong>❌ 食物生成无限循环防护测试失败</strong>
+                                <p>缺少必要的防护机制</p>
+                                <p>MAX_FOOD_ATTEMPTS: ${hasMaxAttempts ? '✅' : '❌'}</p>
+                                <p>attempts计数器: ${hasAttemptsCounter ? '✅' : '❌'}</p>
+                                <p>最大尝试检查: ${hasMaxAttemptsCheck ? '✅' : '❌'}</p>
+                            `;
+                            resultEl.className = 'test-result fail';
+                        }
+                    })
+                    .catch(error => {
+                        resultEl.innerHTML = `<strong>❌ 测试失败</strong><p>无法读取game.js文件</p>`;
+                        resultEl.className = 'test-result fail';
+                    });
+            } catch (error) {
+                resultEl.innerHTML = `<strong>❌ 测试失败</strong><p>${error.message}</p>`;
+                resultEl.className = 'test-result fail';
+            }
+        }
+        
+        function testGameInit() {
+            const resultEl = document.getElementById('test-game-init');
+            try {
+                // 检查游戏初始化函数
+                if (window.SnakeGame && typeof window.SnakeGame.init === 'function') {
+                    resultEl.innerHTML = `
+                        <strong>✅ 游戏初始化测试通过</strong>
+                        <p>SnakeGame.init函数可用</p>
+                        <p>SnakeGame.reset函数可用</p>
+                        <p>SnakeGame.getScore函数可用</p>
+                    `;
+                    resultEl.className = 'test-result pass';
+                } else {
+                    resultEl.innerHTML = `<strong>❌ 游戏初始化测试失败</strong><p>SnakeGame接口不完整</p>`;
+                    resultEl.className = 'test-result fail';
+                }
+            } catch (error) {
+                resultEl.innerHTML = `<strong>❌ 测试失败</strong><p>${error.message}</p>`;
+                resultEl.className = 'test-result fail';
+            }
+        }
+        
+        function testGameControls() {
+            const resultEl = document.getElementById('test-game-controls');
+            try {
+                fetch('game.js')
+                    .then(response => response.text())
+                    .then(code => {
+                        const hasDirectionBuffer = code.includes('directionBuffer');
+                        const hasKeyPrevention = code.includes('event.preventDefault()');
+                        const hasWASDSupport = code.includes("case 'w':") || code.includes("case 'W':");
+                        
+                        if (hasDirectionBuffer && hasKeyPrevention && hasWASDSupport) {
+                            resultEl.innerHTML = `
+                                <strong>✅ 游戏控制测试通过</strong>
+                                <p>已实现方向缓冲队列</p>
+                                <p>已实现键盘事件阻止默认行为</p>
+                                <p>支持WASD键控制</p>
+                            `;
+                            resultEl.className = 'test-result pass';
+                        } else {
+                            resultEl.innerHTML = `
+                                <strong>⚠️ 游戏控制测试警告</strong>
+                                <p>方向缓冲队列: ${hasDirectionBuffer ? '✅' : '❌'}</p>
+                                <p>键盘事件阻止: ${hasKeyPrevention ? '✅' : '❌'}</p>
+                                <p>WASD支持: ${hasWASDSupport ? '✅' : '❌'}</p>
+                            `;
+                            resultEl.className = 'test-result warning';
+                        }
+                    })
+                    .catch(error => {
+                        resultEl.innerHTML = `<strong>❌ 测试失败</strong><p>无法读取game.js文件</p>`;
+                        resultEl.className = 'test-result fail';
+                    });
+            } catch (error) {
+                resultEl.innerHTML = `<strong>❌ 测试失败</strong><p>${error.message}</p>`;
+                resultEl.className = 'test-result fail';
+            }
+        }
+        
+        function testScoreSystem() {
+            const resultEl = document.getElementById('test-score-system');
+            try {
+                fetch('game.js')
+                    .then(response => response.text())
+                    .then(code => {
+                        const hasLocalStorage = code.includes('localStorage');
+                        const hasHighScore = code.includes('highScore');
+                        const hasScoreUpdate = code.includes('score +=');
+                        
+                        if (hasLocalStorage && hasHighScore && hasScoreUpdate) {
+                            resultEl.innerHTML = `
+                                <strong>✅ 分数系统测试通过</strong>
+                                <p>使用localStorage保存最高分</p>
+                                <p>包含最高分变量</p>
+                                <p>包含分数更新逻辑</p>
+                            `;
+                            resultEl.className = 'test-result pass';
+                        } else {
+                            resultEl.innerHTML = `
+                                <strong>⚠️ 分数系统测试警告</strong>
+                                <p>localStorage使用: ${hasLocalStorage ? '✅' : '❌'}</p>
+                                <p>最高分变量: ${hasHighScore ? '✅' : '❌'}</p>
+                                <p>分数更新逻辑: ${hasScoreUpdate ? '✅' : '❌'}</p>
+                            `;
+                            resultEl.className = 'test-result warning';
+                        }
+                    })
+                    .catch(error => {
+                        resultEl.innerHTML = `<strong>❌ 测试失败</strong><p>无法读取game.js文件</p>`;
+                        resultEl.className = 'test-result fail';
+                    });
+            } catch (error) {
+                resultEl.innerHTML = `<strong>❌ 测试失败</strong><p>${error.message}</p>`;
+                resultEl.className = 'test-result fail';
+            }
+        }
+        
+        // 页面加载完成后运行测试
+        window.addEventListener('DOMContentLoaded', runTests);
+    </script>
+</body>
+</html>

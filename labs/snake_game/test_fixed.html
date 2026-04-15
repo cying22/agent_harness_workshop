@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇游戏 - 修复版本测试</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="game-header">
+            <h1 class="game-title">
+                <i class="fas fa-gamepad"></i> 贪吃蛇游戏 - 修复版本测试
+            </h1>
+        </header>
+
+        <main class="game-main">
+            <div class="score-board">
+                <div class="score-item">
+                    <span class="score-label">当前分数</span>
+                    <span id="current-score" class="score-value">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-label">最高分</span>
+                    <span id="high-score" class="score-value">0</span>
+                </div>
+                <div class="score-item">
+                    <span class="score-label">速度</span>
+                    <span id="speed-level" class="score-value">1</span>
+                </div>
+            </div>
+
+            <div class="game-canvas-container">
+                <canvas id="game-canvas" width="400" height="400"></canvas>
+                <div id="game-overlay" class="game-overlay">
+                    <div id="game-message" class="game-message">
+                        <h2>贪吃蛇游戏</h2>
+                        <p>按空格键开始游戏</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="game-controls">
+                <div class="control-group">
+                    <h3><i class="fas fa-gamepad"></i> 游戏控制</h3>
+                    <div class="control-keys">
+                        <div class="key-row">
+                            <div class="key">W</div>
+                            <div class="key">↑</div>
+                        </div>
+                        <div class="key-row">
+                            <div class="key">A</div>
+                            <div class="key">←</div>
+                            <div class="key">S</div>
+                            <div class="key">↓</div>
+                            <div class="key">D</div>
+                            <div class="key">→</div>
+                        </div>
+                    </div>
+                    <p class="control-desc">方向控制</p>
+                </div>
+                <div class="control-group">
+                    <h3><i class="fas fa-play-circle"></i> 游戏操作</h3>
+                    <div class="action-keys">
+                        <div class="key-row">
+                            <div class="key key-space">空格键</div>
+                            <span>开始/重新开始</span>
+                        </div>
+                        <div class="key-row">
+                            <div class="key">P</div>
+                            <span>暂停/继续</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="game-footer">
+            <div class="game-rules">
+                <h3><i class="fas fa-info-circle"></i> 修复说明</h3>
+                <ul>
+                    <li><strong>已修复高优先级问题：</strong></li>
+                    <li>1. 食物生成无限循环风险 - 添加了最大尝试次数限制</li>
+                    <li>2. XSS安全风险 - 使用textContent替代innerHTML</li>
+                    <li>3. 全局变量污染 - 使用IIFE封装代码</li>
+                    <li><strong>已修复中优先级问题：</strong></li>
+                    <li>4. 方向缓冲机制不足 - 添加方向缓冲队列</li>
+                    <li>5. 代码风格问题 - 统一添加分号</li>
+                    <li>6. 碰撞检测优化 - 改进碰撞检测逻辑</li>
+                </ul>
+            </div>
+            <div class="game-status">
+                <p id="game-state">状态: 等待开始</p>
+                <p id="game-length">蛇身长度: 3</p>
+                <p id="game-foods">已吃食物: 0</p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="game_fixed.js"></script>
+</body>
+</html>
