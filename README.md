@@ -6,7 +6,7 @@
   </p>
   <p>
     <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+"/>
-    <img src="https://img.shields.io/badge/Amazon_Bedrock-Claude-FF9900?style=flat-square&logo=amazonaws&logoColor=white" alt="Amazon Bedrock"/>
+    <img src="https://img.shields.io/badge/OpenAI-GPT--4.1-412991?style=flat-square&logo=openai&logoColor=white" alt="OpenAI"/>
     <img src="https://img.shields.io/badge/Labs-6_Modules-3ecfb2?style=flat-square" alt="6 Labs"/>
     <img src="https://img.shields.io/badge/Duration-~3_Hours-8899aa?style=flat-square" alt="~3 Hours"/>
   </p>
@@ -159,17 +159,20 @@ Lab 6: ❻ 状态与持久层  → 完整 Mini Harness ✅
 ### 环境要求
 
 - Python 3.11+
-- AWS 账户（用于 Amazon Bedrock）
+- OpenAI API Key
 - Jupyter Notebook
 
 ### 安装
 
 ```bash
 cd labs/
-pip install -r requirements.txt   # anthropic[bedrock] + jupyter
+pip install -r requirements.txt   # openai + jupyter
 
-# 配置 AWS credentials（用于调用 Bedrock 上的 Claude）
-aws configure
+# 配置 OpenAI API Key
+export OPENAI_API_KEY="your-openai-api-key"
+
+# 可选：指定模型（默认 gpt-4.1）
+export OPENAI_MODEL="gpt-4.1"
 ```
 
 ### 运行
