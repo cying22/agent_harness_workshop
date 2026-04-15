@@ -160,10 +160,11 @@ class _MessagesAPI:
         ):
             request_model = self._parent.tool_model_name or request_model
 
+        request_kwargs = _normalize_chat_completion_kwargs(kwargs)
         request = {
             "model": request_model,
             "messages": _to_openai_messages(system=system, messages=messages or []),
-            **kwargs,
+            **request_kwargs,
         }
         if openai_tools:
             request["tools"] = openai_tools
@@ -212,6 +213,17 @@ class _CompatStream:
 def _should_retry_with_max_completion_tokens(exc: Exception) -> bool:
     message = str(exc).lower()
     return "max_tokens" in message and "max_completion_tokens" in message
+
+
+def _normalize_chat_completion_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(kwargs)
+
+    # Claude-style thinking blocks are used in some labs, but the current
+    # OpenAI/DeepSeek compatibility layer is implemented on chat.completions,
+    # which does not accept a `thinking` argument.
+    normalized.pop("thinking", None)
+
+    return normalized
 
 
 def _requires_tool_model_fallback(*, provider: str, model: str) -> bool:
