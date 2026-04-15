@@ -13,6 +13,10 @@ DEFAULT_DEEPSEEK_MODEL = "deepseek-reasoner"
 DEFAULT_DEEPSEEK_TOOL_MODEL = "deepseek-chat"
 DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 DEFAULT_DEEPSEEK_MAX_TOKENS = 8192
+DEFAULT_DEEPSEEK_CONTEXT_WINDOW = 131072
+EMERGENCY_CONTEXT_NOTICE = (
+    "[系统提示] 为适配模型上下文长度，较早的对话与工具输出已被自动压缩，请以最近几轮结果为准继续。"
+)
 
 
 def _env_first(*names: str) -> str | None:
@@ -163,41 +167,71 @@ class _MessagesAPI:
             request_model = self._parent.tool_model_name or request_model
 
         request_kwargs = _normalize_chat_completion_kwargs(kwargs)
+        chat = self._parent._raw_client.chat.completions
+        raw_messages = deepcopy(messages or [])
         request_max_tokens = _normalize_max_tokens(
             max_tokens,
             provider=self._parent.provider,
             model=request_model,
         )
-        request = {
-            "model": request_model,
-            "messages": _to_openai_messages(system=system, messages=messages or []),
-            **request_kwargs,
-        }
-        if openai_tools:
-            request["tools"] = openai_tools
-            request["tool_choice"] = "auto"
-        if request_max_tokens is not None:
-            request["max_tokens"] = request_max_tokens
+        context_compaction_level = 0
 
-        chat = self._parent._raw_client.chat.completions
-        try:
-            raw_response = chat.create(**request)
-        except Exception as exc:
-            token_limit = _extract_max_tokens_upper_bound(exc)
-            if request_max_tokens is not None and token_limit is not None and token_limit < request_max_tokens:
-                retry_request = dict(request)
-                retry_request["max_tokens"] = token_limit
-                raw_response = chat.create(**retry_request)
-            elif request_max_tokens is None or not _should_retry_with_max_completion_tokens(exc):
-                raise
-            else:
-                retry_request = dict(request)
-                retry_request.pop("max_tokens", None)
+        while True:
+            request = {
+                "model": request_model,
+                "messages": _to_openai_messages(system=system, messages=raw_messages),
+                **request_kwargs,
+            }
+            if openai_tools:
+                request["tools"] = openai_tools
+                request["tool_choice"] = "auto"
+            if request_max_tokens is not None:
+                request["max_tokens"] = request_max_tokens
+
+            try:
+                raw_response = chat.create(**request)
+                break
+            except Exception as exc:
+                token_limit = _extract_max_tokens_upper_bound(exc)
+                context_error = _extract_context_length_error(exc)
+
+                if (
+                    request_max_tokens is not None
+                    and token_limit is not None
+                    and token_limit < request_max_tokens
+                ):
+                    request_max_tokens = token_limit
+                    continue
+
+                if context_error is not None:
+                    next_level = context_compaction_level + 1
+                    compacted_messages = _compact_messages_for_context_limit(
+                        raw_messages,
+                        level=next_level,
+                    )
+                    compacted_max_tokens = _shrink_completion_for_context_error(
+                        request_max_tokens,
+                        context_error=context_error,
+                        provider=self._parent.provider,
+                        model=request_model,
+                    )
+                    if compacted_messages == raw_messages and compacted_max_tokens == request_max_tokens:
+                        raise
+                    raw_messages = compacted_messages
+                    request_max_tokens = compacted_max_tokens
+                    context_compaction_level = next_level
+                    continue
+
+                if request_max_tokens is None or not _should_retry_with_max_completion_tokens(exc):
+                    raise
+
                 retry_tokens = request_max_tokens
                 if token_limit is not None:
                     retry_tokens = min(retry_tokens, token_limit)
-                retry_request["max_completion_tokens"] = retry_tokens
-                raw_response = chat.create(**retry_request)
+                request.pop("max_tokens", None)
+                request["max_completion_tokens"] = retry_tokens
+                raw_response = chat.create(**request)
+                break
 
         return _from_openai_response(raw_response)
 
@@ -264,6 +298,153 @@ def _extract_max_tokens_upper_bound(exc: Exception) -> int | None:
         if match:
             return int(match.group(1))
     return None
+
+
+def _extract_context_length_error(exc: Exception) -> dict[str, int] | None:
+    message = str(exc)
+    patterns = (
+        r"maximum context length is (?P<context>\d+) tokens.*?requested (?P<requested>\d+) tokens "
+        r"\((?P<messages>\d+) in the messages, (?P<completion>\d+) in the completion\)",
+        r"context length is (?P<context>\d+) tokens.*?requested (?P<requested>\d+) tokens "
+        r"\((?P<messages>\d+) in the messages, (?P<completion>\d+) in the completion\)",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, message, flags=re.IGNORECASE | re.DOTALL)
+        if match:
+            return {
+                "context": int(match.group("context")),
+                "requested": int(match.group("requested")),
+                "messages": int(match.group("messages")),
+                "completion": int(match.group("completion")),
+            }
+    return None
+
+
+def _shrink_completion_for_context_error(
+    max_tokens: int | None,
+    *,
+    context_error: dict[str, int],
+    provider: str,
+    model: str,
+) -> int | None:
+    known_limit = _known_max_tokens_limit(provider=provider, model=model)
+    fallback = known_limit or 1024
+    current = max_tokens or fallback
+
+    available = context_error["context"] - context_error["messages"] - 1
+    if available > 0:
+        return max(1, min(current, available))
+
+    return max(1, min(current, 1024))
+
+
+def _compact_messages_for_context_limit(
+    messages: list[dict[str, Any]],
+    *,
+    level: int,
+) -> list[dict[str, Any]]:
+    if not messages:
+        return []
+
+    compacted = deepcopy(messages)
+    total = len(compacted)
+    keep_recent = 8 if level == 1 else 6 if level == 2 else 4
+
+    for index, message in enumerate(compacted):
+        is_recent = index >= max(0, total - keep_recent)
+        compacted[index] = _compact_single_message(
+            message,
+            level=level,
+            is_recent=is_recent,
+        )
+
+    if level >= 2 and len(compacted) > keep_recent + 2:
+        compacted = [compacted[0], {"role": "user", "content": EMERGENCY_CONTEXT_NOTICE}, *compacted[-keep_recent:]]
+
+    if level >= 3 and len(compacted) > 5:
+        compacted = [compacted[0], {"role": "user", "content": EMERGENCY_CONTEXT_NOTICE}, *compacted[-4:]]
+
+    if level >= 4:
+        compacted = [{"role": "user", "content": EMERGENCY_CONTEXT_NOTICE}, *compacted[-3:]]
+
+    return compacted
+
+
+def _compact_single_message(
+    message: dict[str, Any],
+    *,
+    level: int,
+    is_recent: bool,
+) -> dict[str, Any]:
+    compacted = dict(message)
+    content = compacted.get("content")
+
+    if isinstance(content, str):
+        limit = _message_text_limit(level=level, is_recent=is_recent)
+        compacted["content"] = _truncate_text(content, limit)
+        return compacted
+
+    if not isinstance(content, list):
+        return compacted
+
+    new_content: list[Any] = []
+    for block in content:
+        if not isinstance(block, dict):
+            new_content.append(block)
+            continue
+        compacted_block = dict(block)
+        block_type = compacted_block.get("type")
+
+        if block_type == "tool_result":
+            limit = _tool_result_limit(level=level, is_recent=is_recent)
+            compacted_block["content"] = _truncate_text(
+                _stringify_content(compacted_block.get("content", "")),
+                limit,
+            )
+            compacted_block.pop("cache_control", None)
+        elif block_type == "text":
+            limit = _message_text_limit(level=level, is_recent=is_recent)
+            compacted_block["text"] = _truncate_text(str(compacted_block.get("text", "")), limit)
+        elif block_type in {"thinking", "redacted_thinking"} and not is_recent:
+            continue
+
+        new_content.append(compacted_block)
+
+    compacted["content"] = new_content
+    return compacted
+
+
+def _message_text_limit(*, level: int, is_recent: bool) -> int:
+    if level >= 4:
+        return 160
+    if level == 3:
+        return 240 if is_recent else 160
+    if level == 2:
+        return 600 if is_recent else 240
+    return 2400 if is_recent else 400
+
+
+def _tool_result_limit(*, level: int, is_recent: bool) -> int:
+    if level >= 4:
+        return 220
+    if level == 3:
+        return 480 if is_recent else 220
+    if level == 2:
+        return 1200 if is_recent else 360
+    return 4000 if is_recent else 600
+
+
+def _truncate_text(value: str, limit: int) -> str:
+    if limit <= 0:
+        return ""
+    text = str(value)
+    if len(text) <= limit:
+        return text
+    if limit <= 32:
+        return text[:limit]
+    head = max(1, int(limit * 0.7))
+    tail = max(1, limit - head - len("\n...[已截断]...\n"))
+    return text[:head] + "\n...[已截断]...\n" + text[-tail:]
 
 
 def _normalize_chat_completion_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
