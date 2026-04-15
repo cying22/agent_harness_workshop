@@ -13,6 +13,14 @@ DEFAULT_DEEPSEEK_TOOL_MODEL = "deepseek-chat"
 DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 
 
+def _env_first(*names: str) -> str | None:
+    for name in names:
+        value = os.getenv(name)
+        if value:
+            return value
+    return None
+
+
 @dataclass
 class TextBlock:
     text: str
@@ -47,7 +55,7 @@ def default_provider(
         return "deepseek"
     if model and model.startswith("deepseek-"):
         return "deepseek"
-    if os.getenv("DEEPSEEK_API_KEY"):
+    if _env_first("DEEPSEEK_API_KEY", "DEEPSEEK_APIKEY"):
         return "deepseek"
     return "openai"
 
@@ -86,7 +94,7 @@ def create_harness_client(
     resolved_provider = default_provider(provider=provider, model=model, base_url=base_url)
     resolved_model = model or default_model(provider=resolved_provider)
     if resolved_provider == "deepseek":
-        resolved_api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
+        resolved_api_key = api_key or _env_first("DEEPSEEK_API_KEY", "DEEPSEEK_APIKEY")
         resolved_base_url = base_url or os.getenv("DEEPSEEK_BASE_URL", DEFAULT_DEEPSEEK_BASE_URL)
         tool_model_name = os.getenv("DEEPSEEK_TOOL_MODEL", DEFAULT_DEEPSEEK_TOOL_MODEL)
     else:
@@ -95,7 +103,11 @@ def create_harness_client(
         tool_model_name = None
 
     if not resolved_api_key:
-        expected_var = "DEEPSEEK_API_KEY" if resolved_provider == "deepseek" else "OPENAI_API_KEY"
+        expected_var = (
+            "DEEPSEEK_API_KEY (or DEEPSEEK_APIKEY)"
+            if resolved_provider == "deepseek"
+            else "OPENAI_API_KEY"
+        )
         raise RuntimeError(f"Missing API key. Set `{expected_var}` or pass api_key explicitly.")
 
     raw_client = OpenAI(

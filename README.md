@@ -190,6 +190,8 @@ set DEEPSEEK_API_KEY=your-deepseek-api-key
 set DEEPSEEK_MODEL=deepseek-reasoner
 ```
 
+> 优先使用 `DEEPSEEK_API_KEY`；当前代码也兼容 `DEEPSEEK_APIKEY`。
+>
 > 使用 DeepSeek 时，`deepseek-reasoner` 负责普通推理；从 Lab 2 开始，带工具调用的请求会自动切换到 `deepseek-chat`，因为 DeepSeek 官方当前将 Function Calling 示例和能力说明放在 `deepseek-chat` 上。
 
 ### 运行

@@ -45,13 +45,13 @@ echo "→ 验证安装..."
 
 # 检查 DeepSeek API key
 echo ""
-echo "→ 检查 DEEPSEEK_API_KEY..."
-if [ -n "${DEEPSEEK_API_KEY:-}" ]; then
-    echo "  ✓ 已检测到 DEEPSEEK_API_KEY"
+echo "→ 检查 DEEPSEEK_API_KEY / DEEPSEEK_APIKEY..."
+if [ -n "${DEEPSEEK_API_KEY:-${DEEPSEEK_APIKEY:-}}" ]; then
+    echo "  ✓ 已检测到 DeepSeek API key"
     echo "  ✓ 当前模型: ${DEEPSEEK_MODEL:-deepseek-reasoner}"
 else
-    echo "  ⚠️  未检测到 DEEPSEEK_API_KEY"
-    echo "  请设置环境变量: DEEPSEEK_API_KEY"
+    echo "  ⚠️  未检测到 DEEPSEEK_API_KEY / DEEPSEEK_APIKEY"
+    echo "  请设置环境变量: DEEPSEEK_API_KEY（兼容 DEEPSEEK_APIKEY）"
     echo "  可选: DEEPSEEK_MODEL（默认 deepseek-reasoner）"
 fi
 
